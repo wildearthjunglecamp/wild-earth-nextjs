@@ -3,7 +3,7 @@
  * Business logic for booking operations
  */
 
-import { BookingRepository } from '@/repositories/booking.repository';
+import { BookingRepository } from '../repositories/booking.repository';
 import { AvailabilityService } from './availability.service';
 
 export class BookingService {

@@ -30,7 +30,6 @@ export default function RootLayout({
         instagramUsername="wildearthjunglecamp" // Replace with your Instagram username
         whatsappMessage="Hi I'm interested in your stay." // Customize your default message
       />
-        <Footer />
       </body>
     </html>
   );
