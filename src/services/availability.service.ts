@@ -1,7 +1,7 @@
 /**
  * Availability Service
  * Handles tent availability checking with date overlap logic
- * 
+ *
  * Business Rules:
  * - Check-in: 1:00 PM (13:00)
  * - Check-out: 11:00 AM (11:00)
@@ -10,6 +10,7 @@
  */
 
 import { createClient } from '../lib/supabase/server';
+import { pricingRepository } from '../repositories/pricing.repository';
 
 // Types
 export interface AvailableTent {
@@ -29,6 +30,9 @@ export interface AvailableTentType {
   tentTypeName: string;
   capacity: number;
   basePrice: number;
+  pricePerNight?: number; // Actual price considering date-specific pricing
+  totalPrice?: number; // Total for the entire stay
+  hasCustomPricing?: boolean; // Whether custom pricing is applied
   description: string;
   amenities: string[];
   images: string[];
@@ -95,6 +99,7 @@ export class AvailabilityService {
   /**
    * Get available tents grouped by tent type
    * Returns summary with available count per type
+   * Now includes date-specific pricing information
    */
   async getAvailableTentsByType(
     params: AvailabilityCheckParams
@@ -117,19 +122,43 @@ export class AvailabilityService {
       throw new Error(`Failed to fetch available tents by type: ${error.message}`);
     }
 
-    return (data || []).map((type: any) => ({
-      tentTypeId: type.tent_type_id,
-      tentTypeName: type.tent_type_name,
-      capacity: type.capacity,
-      basePrice: parseFloat(type.base_price),
-      description: type.description,
-      amenities: type.amenities || [],
-      images: type.images || [],
-      availableCount: parseInt(type.available_count),
-      totalCount: parseInt(type.total_count),
-      availableTentIds: type.available_tent_ids || [],
-      availableTentNumbers: type.available_tent_numbers || [],
-    }));
+    // Enhance with date-specific pricing
+    const enhancedData = await Promise.all(
+      (data || []).map(async (type: any) => {
+        const basePrice = parseFloat(type.base_price);
+        
+        // Get date-specific pricing for this tent type
+        const totalPrice = await pricingRepository.calculateTotalForRange(
+          type.tent_type_id,
+          this.formatDate(checkInDate),
+          this.formatDate(checkOutDate),
+          1
+        );
+
+        const nights = this.calculateNights(checkInDate, checkOutDate);
+        const pricePerNight = totalPrice ? totalPrice / nights : basePrice;
+        const hasCustomPricing = totalPrice !== null && totalPrice !== (basePrice * nights);
+
+        return {
+          tentTypeId: type.tent_type_id,
+          tentTypeName: type.tent_type_name,
+          capacity: type.capacity,
+          basePrice,
+          pricePerNight,
+          totalPrice: totalPrice || (basePrice * nights),
+          hasCustomPricing,
+          description: type.description,
+          amenities: type.amenities || [],
+          images: type.images || [],
+          availableCount: parseInt(type.available_count),
+          totalCount: parseInt(type.total_count),
+          availableTentIds: type.available_tent_ids || [],
+          availableTentNumbers: type.available_tent_numbers || [],
+        };
+      })
+    );
+
+    return enhancedData;
   }
 
   /**
@@ -233,14 +262,59 @@ export class AvailabilityService {
 
   /**
    * Calculate total price for a booking
+   * Now uses date-specific pricing if available
    */
-  calculateBookingPrice(
-    basePrice: number,
+  async calculateBookingPrice(
+    tentTypeId: string,
     checkInDate: Date,
-    checkOutDate: Date
-  ): number {
+    checkOutDate: Date,
+    quantity: number = 1
+  ): Promise<number> {
+    const totalPrice = await pricingRepository.calculateTotalForRange(
+      tentTypeId,
+      this.formatDate(checkInDate),
+      this.formatDate(checkOutDate),
+      quantity
+    );
+
+    if (totalPrice === null) {
+      throw new Error('Failed to calculate booking price');
+    }
+
+    return totalPrice;
+  }
+
+  /**
+   * Get detailed pricing breakdown for a booking
+   */
+  async getPricingBreakdown(
+    tentTypeId: string,
+    checkInDate: Date,
+    checkOutDate: Date,
+    quantity: number = 1
+  ): Promise<{
+    nights: number;
+    dailyPrices: Array<{ date: string; price: number; isCustomPrice: boolean }>;
+    subtotal: number;
+    total: number;
+  }> {
     const nights = this.calculateNights(checkInDate, checkOutDate);
-    return basePrice * nights;
+    
+    const dailyPrices = await pricingRepository.getPricesForRange(
+      tentTypeId,
+      this.formatDate(checkInDate),
+      this.formatDate(checkOutDate)
+    );
+
+    const subtotal = dailyPrices.reduce((sum, dp) => sum + dp.price, 0);
+    const total = subtotal * quantity;
+
+    return {
+      nights,
+      dailyPrices,
+      subtotal,
+      total,
+    };
   }
 
   /**

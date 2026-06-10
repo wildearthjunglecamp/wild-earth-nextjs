@@ -1,17 +1,18 @@
-import { createClient } from '@/lib/supabase/server';
-import { verifyPaymentSignature } from '@/lib/payment/razorpay';
-import type { 
-  CreateBookingInput, 
+import { createClient } from '../lib/supabase/server';
+import { verifyPaymentSignature } from '../lib/payment/razorpay';
+import { pricingRepository } from '../repositories/pricing.repository';
+import type {
+  CreateBookingInput,
   BookingResponse,
   TentItem,
   TentTypeSummary,
   AssignedTent
-} from '@/validations/booking.schema';
-import { 
-  calculateTotalTents, 
+} from '../validations/booking.schema';
+import {
+  calculateTotalTents,
   calculateTentItemsTotal,
-  validateTentCapacity 
-} from '@/validations/booking.schema';
+  validateTentCapacity
+} from '../validations/booking.schema';
 
 /**
  * Booking Service
@@ -107,17 +108,43 @@ export async function validateAvailability(
 
 /**
  * Calculate total amount for a booking
+ * Now uses date-specific pricing for accurate calculations
  */
-export function calculateTotalAmount(
+export async function calculateTotalAmount(
   tentItems: TentItem[],
   checkIn: string,
   checkOut: string,
   addOns?: Array<{ quantity: number; price: number }>
-): number {
-  const nights = calculateNights(checkIn, checkOut);
+): Promise<number> {
+  // Calculate tent items total with date-specific pricing
+  let tentTotal = 0;
   
-  // Calculate tent items total
-  const tentTotal = calculateTentItemsTotal(tentItems, nights);
+  for (const item of tentItems) {
+    // Get tent type ID from slug (you'll need to query this)
+    const supabase = await createClient();
+    const { data: tentType } = await supabase
+      .from('tent_types')
+      .select('id')
+      .eq('slug', item.tentTypeSlug)
+      .single();
+    
+    if (tentType) {
+      const itemTotal = await pricingRepository.calculateTotalForRange(
+        tentType.id,
+        checkIn,
+        checkOut,
+        item.quantity
+      );
+      
+      if (itemTotal !== null) {
+        tentTotal += itemTotal;
+      } else {
+        // Fallback to base price calculation
+        const nights = calculateNights(checkIn, checkOut);
+        tentTotal += item.pricePerNight * item.quantity * nights;
+      }
+    }
+  }
   
   // Calculate add-ons total
   const addOnsTotal = addOns?.reduce((sum, addon) => {
@@ -125,6 +152,62 @@ export function calculateTotalAmount(
   }, 0) || 0;
   
   return tentTotal + addOnsTotal;
+}
+
+/**
+ * Get pricing breakdown for booking with date-specific prices
+ */
+export async function getBookingPricingBreakdown(
+  tentItems: TentItem[],
+  checkIn: string,
+  checkOut: string
+): Promise<{
+  tentItems: Array<{
+    tentTypeSlug: string;
+    quantity: number;
+    dailyPrices: Array<{ date: string; price: number; isCustomPrice: boolean }>;
+    subtotal: number;
+  }>;
+  totalTentCost: number;
+  nights: number;
+}> {
+  const supabase = await createClient();
+  const nights = calculateNights(checkIn, checkOut);
+  const breakdown: any[] = [];
+  let totalTentCost = 0;
+
+  for (const item of tentItems) {
+    // Get tent type ID from slug
+    const { data: tentType } = await supabase
+      .from('tent_types')
+      .select('id')
+      .eq('slug', item.tentTypeSlug)
+      .single();
+
+    if (tentType) {
+      const dailyPrices = await pricingRepository.getPricesForRange(
+        tentType.id,
+        checkIn,
+        checkOut
+      );
+
+      const subtotal = dailyPrices.reduce((sum: number, dp: any) => sum + dp.price, 0) * item.quantity;
+      totalTentCost += subtotal;
+
+      breakdown.push({
+        tentTypeSlug: item.tentTypeSlug,
+        quantity: item.quantity,
+        dailyPrices,
+        subtotal,
+      });
+    }
+  }
+
+  return {
+    tentItems: breakdown,
+    totalTentCost,
+    nights,
+  };
 }
 
 /**
@@ -150,9 +233,9 @@ export async function createBookingWithPayment(
     // Step 1: Verify Razorpay payment signature
     console.log('Step 1: Verifying payment signature...');
     const isPaymentValid = verifyPaymentSignature(
-      input.razorpayOrderId,
-      input.razorpayPaymentId,
-      input.razorpaySignature
+      { razorpay_order_id: input.razorpayOrderId,
+      razorpay_payment_id: input.razorpayPaymentId,
+      razorpay_signature:  input.razorpaySignature}
     );
 
     if (!isPaymentValid) {
