@@ -124,6 +124,10 @@ COMMENT ON FUNCTION get_available_tents IS
 -- Get available tents grouped by tent type with counts
 -- ============================================================================
 
+-- Drop first: the return column list changed (added tent_type_slug),
+-- and CREATE OR REPLACE cannot alter an existing function's return type.
+DROP FUNCTION IF EXISTS get_available_tents_by_type(DATE, DATE, INTEGER);
+
 CREATE OR REPLACE FUNCTION get_available_tents_by_type(
   p_check_in DATE,
   p_check_out DATE,
@@ -131,6 +135,7 @@ CREATE OR REPLACE FUNCTION get_available_tents_by_type(
 )
 RETURNS TABLE (
   tent_type_id UUID,
+  tent_type_slug VARCHAR,
   tent_type_name VARCHAR,
   capacity INTEGER,
   base_price DECIMAL,
@@ -149,8 +154,9 @@ BEGIN
   END IF;
 
   RETURN QUERY
-  SELECT 
+  SELECT
     tt.id,
+    tt.slug,
     tt.name,
     tt.capacity,
     tt.base_price,
@@ -162,12 +168,12 @@ BEGIN
     COUNT(DISTINCT t.id),
     
     -- Total tents of this type (that are in 'available' status)
-    (
-      SELECT COUNT(*) 
-      FROM tents 
-      WHERE tent_type_id = tt.id 
-      AND status = 'available'
-    )::BIGINT,
+   (
+  SELECT COUNT(*)
+  FROM tents t2
+  WHERE t2.tent_type_id = tt.id
+    AND t2.status = 'available'
+)::BIGINT,
     
     -- Array of available tent IDs
     ARRAY_AGG(t.id),
@@ -190,15 +196,16 @@ BEGIN
     -- Check availability
     AND check_tent_availability(t.id, p_check_in, p_check_out)
     
-  GROUP BY 
-    tt.id, 
-    tt.name, 
-    tt.capacity, 
-    tt.base_price, 
-    tt.description, 
+  GROUP BY
+    tt.id,
+    tt.slug,
+    tt.name,
+    tt.capacity,
+    tt.base_price,
+    tt.description,
     tt.amenities,
     tt.images
-    
+
   -- Only return tent types that have at least one available tent
   HAVING COUNT(DISTINCT t.id) > 0
   

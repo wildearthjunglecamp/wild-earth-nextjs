@@ -13,7 +13,11 @@ interface RazorpayButtonProps {
     customerEmail: string;
     customerPhone: string;
   };
-  onSuccess?: (paymentId: string, orderId: string) => void;
+  onSuccess?: (
+    paymentId: string,
+    orderId: string,
+    signature: string
+  ) => void;
   onError?: (error: any) => void;
   disabled?: boolean;
   className?: string;
@@ -133,9 +137,13 @@ export function RazorpayButton({
           description: 'Your payment has been verified successfully.',
         });
 
-        // Call success callback
+        // Call success callback (signature is needed to persist the booking)
         if (onSuccess) {
-          onSuccess(response.razorpay_payment_id, response.razorpay_order_id);
+          onSuccess(
+            response.razorpay_payment_id,
+            response.razorpay_order_id,
+            response.razorpay_signature
+          );
         }
       } else {
         throw new Error('Payment verification failed');

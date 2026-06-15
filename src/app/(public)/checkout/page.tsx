@@ -46,6 +46,7 @@ import {
 // TypeScript interfaces
 interface SelectedTent {
   tentTypeId: string;
+  tentTypeSlug: string;
   tentTypeName: string;
   capacity: number;
   basePrice: number;
@@ -80,6 +81,8 @@ interface FinalBooking {
   totalGuests: number;
   totalPrice: number;
   guestDetails: GuestDetails;
+  adults: number;
+  children: number;
   addOns: AddOns;
   addOnsTotal: number;
   grandTotal: number;
@@ -151,20 +154,103 @@ export default function CheckoutPage() {
     return `WE${timestamp}${random}`.toUpperCase();
   };
 
-  // Handle payment success
-  const handlePaymentSuccess = (paymentId: string, orderId: string) => {
-    const reference = generateBookingReference();
-    setBookingReference(reference);
-    setPaymentState('success');
-    
-    // Clear booking data from localStorage
-    localStorage.removeItem('bookingData');
-    localStorage.removeItem('finalBooking');
-    
-    // Store booking reference for success page
-    localStorage.setItem('bookingReference', reference);
-    localStorage.setItem('paymentId', paymentId);
-    localStorage.setItem('orderId', orderId);
+  // Handle payment success: persist the booking server-side. The payment has
+  // already been verified by RazorpayButton; createBookingWithPayment re-verifies
+  // the signature and creates the booking + payment records atomically.
+  const handlePaymentSuccess = async (
+    paymentId: string,
+    orderId: string,
+    signature: string
+  ) => {
+    if (!bookingData || !breakdown) return;
+
+    // Show the processing overlay while we save the booking.
+    setPaymentState('processing');
+
+    const payload = {
+      customerName: bookingData.guestDetails.fullName,
+      customerEmail: bookingData.guestDetails.email,
+      // Strip spaces/dashes so the phone matches the server's E.164-ish regex.
+      customerPhone: bookingData.guestDetails.phone.replace(/[\s-]/g, ''),
+      checkIn: bookingData.checkIn,
+      checkOut: bookingData.checkOut,
+      tentItems: bookingData.selectedTents.map((tent) => ({
+        tentTypeSlug: tent.tentTypeSlug,
+        quantity: tent.quantity,
+        pricePerNight: tent.basePrice,
+      })),
+      adults: bookingData.adults,
+      children: bookingData.children,
+      // Persist the amount actually charged (incl. platform fee + GST).
+      totalAmount: breakdown.total,
+      razorpayOrderId: orderId,
+      razorpayPaymentId: paymentId,
+      razorpaySignature: signature,
+    };
+
+    try {
+      const response = await fetch('/api/bookings/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        // Payment went through but the booking couldn't be saved. Keep the
+        // booking data in localStorage and surface the payment ID for support.
+        setPaymentState('error');
+        setErrorMessage(
+          `Your payment succeeded (Payment ID: ${paymentId}), but we couldn't confirm your booking: ${
+            result.message || result.error || 'Unknown error'
+          }. Please contact support with this Payment ID and do not pay again.`
+        );
+        return;
+      }
+
+      // Use the authoritative booking number returned by the server.
+      const reference = result.data.bookingNumber;
+      setBookingReference(reference);
+
+      // Persist a confirmation summary for the success page. We render from
+      // this (the browser already has the full booking) rather than re-reading
+      // from the DB, which would require a public, enumerable booking-by-number
+      // endpoint that could leak customer PII.
+      const confirmedBooking = {
+        bookingNumber: reference,
+        paymentId,
+        orderId,
+        checkIn: bookingData.checkIn,
+        checkOut: bookingData.checkOut,
+        nights: bookingData.nights,
+        selectedTents: bookingData.selectedTents,
+        adults: bookingData.adults,
+        children: bookingData.children,
+        guestDetails: bookingData.guestDetails,
+        addOns: bookingData.addOns,
+        total: breakdown.total,
+      };
+
+      // Clear funnel data now that the booking is confirmed.
+      localStorage.removeItem('bookingData');
+      localStorage.removeItem('finalBooking');
+
+      // Store details for the success page.
+      localStorage.setItem('confirmedBooking', JSON.stringify(confirmedBooking));
+      localStorage.setItem('bookingReference', reference);
+      localStorage.setItem('paymentId', paymentId);
+      localStorage.setItem('orderId', orderId);
+
+      setPaymentState('success');
+    } catch (error: any) {
+      setPaymentState('error');
+      setErrorMessage(
+        `Your payment succeeded (Payment ID: ${paymentId}), but we couldn't confirm your booking: ${
+          error?.message || 'Network error'
+        }. Please contact support with this Payment ID and do not pay again.`
+      );
+    }
   };
 
   // Handle payment error

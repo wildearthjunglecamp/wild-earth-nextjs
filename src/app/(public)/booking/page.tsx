@@ -30,11 +30,16 @@ import { Alert, AlertDescription } from '@/src/components/ui/alert';
 // TypeScript interfaces
 interface SelectedTent {
   tentTypeId: string;
+  tentTypeSlug: string;
   tentTypeName: string;
   capacity: number;
   basePrice: number;
   quantity: number;
 }
+
+// Children under 5 don't count against a tent's (adult) capacity; each tent
+// can additionally hold up to this many young children.
+const CHILDREN_PER_TENT = 2;
 
 interface BookingData {
   checkIn: string;
@@ -76,9 +81,14 @@ export default function BookingPage() {
     phone: '',
     email: '',
   });
-  
+
   // Guest details validation errors
   const [guestErrors, setGuestErrors] = useState<Partial<GuestDetails>>({});
+
+  // Guest split: adults (age 5+) and young children (under 5).
+  const [adults, setAdults] = useState(1);
+  const [children, setChildren] = useState(0);
+  const [guestCountError, setGuestCountError] = useState<string | null>(null);
   
   // Add-ons selection
   const [addOns, setAddOns] = useState<AddOns>({
@@ -150,11 +160,51 @@ export default function BookingPage() {
     return bookingData.totalPrice + calculateAddOnsTotal();
   };
 
+  // Capacity limits derived from the selected tents.
+  // Adults fill each tent's stated capacity; children (under 5) get
+  // CHILDREN_PER_TENT extra slots per tent, on top of capacity.
+  const getCapacityLimits = () => {
+    const tents = bookingData?.selectedTents ?? [];
+    const adultCapacity = tents.reduce(
+      (sum, tent) => sum + tent.capacity * tent.quantity,
+      0
+    );
+    const totalTents = tents.reduce((sum, tent) => sum + tent.quantity, 0);
+    return { adultCapacity, childCapacity: totalTents * CHILDREN_PER_TENT };
+  };
+
+  // Validate the adults/children split against tent capacity.
+  const validateGuestCounts = (): boolean => {
+    const { adultCapacity, childCapacity } = getCapacityLimits();
+
+    if (adults < 1) {
+      setGuestCountError('At least one adult is required.');
+      return false;
+    }
+    if (adults > adultCapacity) {
+      setGuestCountError(
+        `Your selected tents hold up to ${adultCapacity} adults. Add more tents or reduce the count.`
+      );
+      return false;
+    }
+    if (children > childCapacity) {
+      setGuestCountError(
+        `Your selected tents allow up to ${childCapacity} children under 5 (${CHILDREN_PER_TENT} per tent).`
+      );
+      return false;
+    }
+
+    setGuestCountError(null);
+    return true;
+  };
+
   // Handle next step
   const handleNext = () => {
     if (currentStep === 2) {
-      // Validate guest details before proceeding
-      if (!validateGuestDetails()) {
+      // Validate guest details and guest counts before proceeding
+      const detailsValid = validateGuestDetails();
+      const countsValid = validateGuestCounts();
+      if (!detailsValid || !countsValid) {
         return;
       }
     }
@@ -181,6 +231,8 @@ export default function BookingPage() {
     const finalBooking = {
       ...bookingData,
       guestDetails,
+      adults,
+      children,
       addOns,
       addOnsTotal: calculateAddOnsTotal(),
       grandTotal: calculateGrandTotal(),
@@ -581,6 +633,63 @@ export default function BookingPage() {
                           <p className="font-body text-sm text-red-600 flex items-center gap-1">
                             <AlertCircle className="h-3 w-3" />
                             {guestErrors.email}
+                          </p>
+                        )}
+                      </div>
+
+                      <Separator />
+
+                      {/* Guest Split */}
+                      <div className="space-y-3">
+                        <Label className="font-body text-label-sm text-secondary-700 flex items-center gap-2">
+                          <Users className="h-4 w-4" />
+                          Number of Guests *
+                        </Label>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-1">
+                            <Label htmlFor="adults" className="font-body text-xs text-secondary-600">
+                              Adults (age 5+)
+                            </Label>
+                            <Input
+                              id="adults"
+                              type="number"
+                              min={1}
+                              max={getCapacityLimits().adultCapacity}
+                              value={adults}
+                              onChange={(e) => {
+                                setAdults(parseInt(e.target.value) || 0);
+                                setGuestCountError(null);
+                              }}
+                              className="font-body text-body-md"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label htmlFor="children" className="font-body text-xs text-secondary-600">
+                              Children (under 5)
+                            </Label>
+                            <Input
+                              id="children"
+                              type="number"
+                              min={0}
+                              max={getCapacityLimits().childCapacity}
+                              value={children}
+                              onChange={(e) => {
+                                setChildren(parseInt(e.target.value) || 0);
+                                setGuestCountError(null);
+                              }}
+                              className="font-body text-body-md"
+                            />
+                          </div>
+                        </div>
+                        <p className="font-body text-xs text-secondary-500">
+                          Your selection holds up to {getCapacityLimits().adultCapacity} adults
+                          and {getCapacityLimits().childCapacity} children under 5. Children aged 5
+                          and above count as adults.
+                        </p>
+                        {guestCountError && (
+                          <p className="font-body text-sm text-red-600 flex items-center gap-1">
+                            <AlertCircle className="h-3 w-3" />
+                            {guestCountError}
                           </p>
                         )}
                       </div>

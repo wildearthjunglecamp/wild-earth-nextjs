@@ -183,8 +183,17 @@ export function calculateTentItemsTotal(tentItems: TentItem[], nights: number): 
   }, 0);
 }
 
+// Children under 5 don't count against a tent's (adult) capacity; each tent
+// can additionally hold up to this many young children.
+const CHILDREN_PER_TENT = 2;
+
 /**
- * Helper function to validate tent capacity matches guest count
+ * Validate the adults/children split against tent capacity.
+ *
+ * Capacity rules:
+ * - Adults (age 5+) must fit within the combined stated capacity of the tents.
+ * - Children under 5 are allowed on top of capacity, up to CHILDREN_PER_TENT
+ *   per tent, regardless of the tent's capacity.
  */
 export function validateTentCapacity(
   tentItems: TentItem[],
@@ -199,17 +208,29 @@ export function validateTentCapacity(
     four_sharing_jungle: 4,
   };
 
-  const totalCapacity = tentItems.reduce((sum, item) => {
+  const adultCapacity = tentItems.reduce((sum, item) => {
     const capacity = capacities[item.tentTypeSlug] || 0;
-    return sum + (capacity * item.quantity);
+    return sum + capacity * item.quantity;
   }, 0);
 
-  const totalGuests = adults + children;
+  const totalTents = tentItems.reduce((sum, item) => sum + item.quantity, 0);
+  const childCapacity = totalTents * CHILDREN_PER_TENT;
 
-  if (totalGuests > totalCapacity) {
+  if (adults < 1) {
+    return { valid: false, message: 'At least one adult is required' };
+  }
+
+  if (adults > adultCapacity) {
     return {
       valid: false,
-      message: `Total guests (${totalGuests}) exceeds tent capacity (${totalCapacity})`,
+      message: `Adults (${adults}) exceed tent capacity (${adultCapacity})`,
+    };
+  }
+
+  if (children > childCapacity) {
+    return {
+      valid: false,
+      message: `Children under 5 (${children}) exceed the limit of ${childCapacity} (${CHILDREN_PER_TENT} per tent)`,
     };
   }
 

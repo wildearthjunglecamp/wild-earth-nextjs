@@ -15,6 +15,7 @@ import Link from 'next/link';
 // TypeScript interfaces
 interface TentType {
   tentTypeId: string;
+  tentTypeSlug: string;
   tentTypeName: string;
   capacity: number;
   basePrice: number;
@@ -41,6 +42,7 @@ interface AvailabilityResponse {
 
 interface SelectedTent {
   tentTypeId: string;
+  tentTypeSlug: string;
   tentTypeName: string;
   capacity: number;
   basePrice: number;
@@ -136,6 +138,7 @@ export default function AvailabilityPage() {
       // Select (default quantity: 1)
       newSelections.set(tent.tentTypeId, {
         tentTypeId: tent.tentTypeId,
+        tentTypeSlug: tent.tentTypeSlug,
         tentTypeName: tent.tentTypeName,
         capacity: tent.capacity,
         basePrice: tent.basePrice,

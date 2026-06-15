@@ -13,9 +13,11 @@ import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Alert, AlertDescription } from '../../components/ui/alert';
+import { createClient } from '../../lib/supabase/client';
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
+  const supabase = createClient();
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -27,8 +29,22 @@ export default function ForgotPasswordPage() {
     setIsLoading(true);
 
     try {
-      // TODO: Implement Supabase password reset
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      // Where the emailed reset link lands. Falls back to the current origin
+      // when NEXT_PUBLIC_APP_URL is not set (e.g. preview deployments).
+      const baseUrl =
+        process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(
+        email,
+        { redirectTo: `${baseUrl}/reset-password` }
+      );
+
+      if (resetError) {
+        setError(resetError.message);
+        return;
+      }
+
+      // Always show success so we don't reveal which emails have accounts.
       setIsSuccess(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to send reset email');

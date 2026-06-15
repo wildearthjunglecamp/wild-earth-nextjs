@@ -68,6 +68,7 @@ export async function POST(request: NextRequest) {
     // Transform data to match response schema
     const transformedData = (data || []).map((item: any) => ({
       tentTypeId: item.tent_type_id,
+      tentTypeSlug: item.tent_type_slug,
       tentTypeName: item.tent_type_name,
       capacity: item.capacity,
       basePrice: parseFloat(item.base_price),

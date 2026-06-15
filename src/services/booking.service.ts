@@ -1,3 +1,4 @@
+import { randomBytes } from 'crypto';
 import { createClient } from '../lib/supabase/server';
 import { verifyPaymentSignature } from '../lib/payment/razorpay';
 import { pricingRepository } from '../repositories/pricing.repository';
@@ -28,18 +29,33 @@ interface BookingResult {
   details?: any;
 }
 
+// Unambiguous Crockford-style base32 alphabet — no 0/1/I/L/O/U so the
+// reference is easy to read out and type without confusion.
+const REFERENCE_ALPHABET = '23456789ABCDEFGHJKMNPQRSTVWXYZ';
+const REFERENCE_LENGTH = 8;
+
 /**
- * Generate unique booking number
- * Format: WE-YYYYMMDD-XXXX (e.g., WE-20241225-0001)
+ * Generate a unique, hard-to-guess booking number.
+ * Format: WE-YYYYMMDD-XXXXXXXX (e.g., WE-20241225-7K2MQ9PX)
+ *
+ * The suffix is cryptographically random (~40 bits of entropy), so it cannot
+ * be enumerated and collisions are astronomically unlikely. The DB still has a
+ * UNIQUE constraint on booking_number as the ultimate guarantee, and
+ * createBookingWithPayment retries on the rare collision.
  */
 function generateBookingNumber(): string {
   const date = new Date();
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
-  const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-  
-  return `WE-${year}${month}${day}-${random}`;
+
+  const bytes = randomBytes(REFERENCE_LENGTH);
+  let suffix = '';
+  for (let i = 0; i < REFERENCE_LENGTH; i++) {
+    suffix += REFERENCE_ALPHABET[bytes[i] % REFERENCE_ALPHABET.length];
+  }
+
+  return `WE-${year}${month}${day}-${suffix}`;
 }
 
 /**
@@ -51,59 +67,6 @@ function calculateNights(checkIn: string, checkOut: string): number {
   const diffTime = checkOutDate.getTime() - checkInDate.getTime();
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   return diffDays;
-}
-
-/**
- * Validate availability for all tent types in the booking
- */
-export async function validateAvailability(
-  tentItems: TentItem[],
-  checkIn: string,
-  checkOut: string
-): Promise<{ available: boolean; message?: string; details?: any }> {
-  const supabase = await createClient();
-
-  try {
-    for (const item of tentItems) {
-      // Check availability for this tent type
-      const { data, error } = await supabase.rpc('check_tent_availability', {
-        p_tent_type_slug: item.tentTypeSlug,
-        p_check_in: checkIn,
-        p_check_out: checkOut,
-        p_quantity: item.quantity,
-      });
-
-      if (error) {
-        console.error('Availability check error:', error);
-        return {
-          available: false,
-          message: 'Failed to check availability',
-          details: error.message,
-        };
-      }
-
-      if (!data || data.available_count < item.quantity) {
-        return {
-          available: false,
-          message: `Insufficient tents available for ${item.tentTypeSlug}`,
-          details: {
-            tentType: item.tentTypeSlug,
-            requested: item.quantity,
-            available: data?.available_count || 0,
-          },
-        };
-      }
-    }
-
-    return { available: true };
-  } catch (error: any) {
-    console.error('Unexpected error in validateAvailability:', error);
-    return {
-      available: false,
-      message: 'An unexpected error occurred while checking availability',
-      details: error.message,
-    };
-  }
 }
 
 /**
@@ -264,26 +227,11 @@ export async function createBookingWithPayment(
       };
     }
 
-    // Step 3: Pre-validate availability (optional but recommended)
-    console.log('Step 3: Pre-validating availability...');
-    const availabilityCheck = await validateAvailability(
-      input.tentItems,
-      input.checkIn,
-      input.checkOut
-    );
-
-    if (!availabilityCheck.available) {
-      return {
-        success: false,
-        error: 'Insufficient tents available',
-        details: availabilityCheck.message,
-      };
-    }
-
-    // Step 4: Create booking with atomic transaction
-    console.log('Step 4: Creating booking with atomic transaction...');
-
-    const bookingNumber = generateBookingNumber();
+    // Step 3: Create booking with atomic transaction.
+    // Availability is checked inside create_booking_with_payment with
+    // row-level locking (and raises 'insufficient_tents'), so there is no
+    // separate pre-check here — that would only add a TOCTOU race window.
+    console.log('Step 3: Creating booking with atomic transaction...');
 
     // Convert tent items to JSONB format for PostgreSQL
     const tentItemsJson = input.tentItems.map(item => ({
@@ -292,10 +240,20 @@ export async function createBookingWithPayment(
       pricePerNight: item.pricePerNight,
     }));
 
-    // Call the stored procedure that handles the entire booking creation atomically
-    const { data: bookingData, error: bookingError } = await supabase.rpc(
-      'create_booking_with_payment',
-      {
+    // Call the stored procedure that creates the booking atomically.
+    // On the rare chance the random booking number collides with an existing
+    // one (UNIQUE constraint), regenerate it and retry. The transaction rolls
+    // back fully on failure, so the payment is never recorded on a failed
+    // attempt — retrying is safe and won't trip the duplicate_payment guard.
+    const MAX_BOOKING_NUMBER_ATTEMPTS = 5;
+    let bookingNumber = '';
+    let bookingData: any = null;
+    let bookingError: any = null;
+
+    for (let attempt = 1; attempt <= MAX_BOOKING_NUMBER_ATTEMPTS; attempt++) {
+      bookingNumber = generateBookingNumber();
+
+      const { data, error } = await supabase.rpc('create_booking_with_payment', {
         p_booking_number: bookingNumber,
         p_customer_name: input.customerName,
         p_customer_email: input.customerEmail,
@@ -310,8 +268,25 @@ export async function createBookingWithPayment(
         p_razorpay_order_id: input.razorpayOrderId,
         p_razorpay_payment_id: input.razorpayPaymentId,
         p_razorpay_signature: input.razorpaySignature,
-      }
-    );
+      });
+
+      bookingData = data;
+      bookingError = error;
+
+      if (!error) break;
+
+      // Retry only on a booking_number uniqueness collision; any other error
+      // (insufficient_tents, duplicate_payment, etc.) should surface immediately.
+      const isDuplicateNumber =
+        typeof error.message === 'string' &&
+        error.message.includes('booking_number');
+
+      if (!isDuplicateNumber) break;
+
+      console.warn(
+        `Booking number collision (${bookingNumber}) on attempt ${attempt}, retrying...`
+      );
+    }
 
     if (bookingError) {
       console.error('Booking creation error:', bookingError);

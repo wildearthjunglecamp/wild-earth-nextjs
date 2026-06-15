@@ -5,28 +5,63 @@
  * Handles authentication for the campsite management dashboard
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Alert, AlertDescription } from '../../components/ui/alert';
+import { createClient } from '../../lib/supabase/client';
+import type { User } from '../../types/admin';
 
 interface LoginFormData {
   email: string;
   password: string;
 }
 
+/**
+ * Resolve where to send the user after a successful login.
+ * Only internal paths are allowed to avoid open-redirect attacks.
+ */
+function getSafeReturnUrl(): string {
+  const fallback = '/admin/dashboard';
+  if (typeof window === 'undefined') return fallback;
+
+  const target = new URLSearchParams(window.location.search).get('returnUrl');
+  // Must be a relative, in-app path (e.g. "/admin/bookings"), not "//evil.com".
+  if (target && target.startsWith('/') && !target.startsWith('//')) {
+    return target;
+  }
+  return fallback;
+}
+
+/**
+ * Check whether an authenticated user carries the admin role.
+ * Mirrors the logic in middleware.ts and lib/auth/adminAuth.ts.
+ */
+function hasAdminRole(user: Pick<User, 'app_metadata' | 'user_metadata'>): boolean {
+  return (
+    user.app_metadata?.role === 'admin' || user.user_metadata?.role === 'admin'
+  );
+}
+
 export function AdminLoginForm() {
   const router = useRouter();
+  const supabase = createClient();
   const [formData, setFormData] = useState<LoginFormData>({
     email: '',
     password: '',
   });
+  const [returnUrl, setReturnUrl] = useState('/admin/dashboard');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Read the post-login destination from the query string on the client.
+  useEffect(() => {
+    setReturnUrl(getSafeReturnUrl());
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,18 +69,31 @@ export function AdminLoginForm() {
     setIsLoading(true);
 
     try {
-      // TODO: Implement Supabase authentication
-      // Placeholder for authentication logic
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      
-      // Simulate authentication
-      if (formData.email && formData.password) {
-        router.push('/admin/dashboard');
-      } else {
-        throw new Error('Please enter valid credentials');
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
+      });
+
+      if (signInError) {
+        // Supabase returns "Invalid login credentials" for bad email/password.
+        setError(signInError.message);
+        return;
       }
+
+      // Block non-admin accounts from entering the dashboard.
+      if (!data.user || !hasAdminRole(data.user as User)) {
+        await supabase.auth.signOut();
+        setError('This account is not authorized to access the admin dashboard.');
+        return;
+      }
+
+      // router.refresh() lets the server/middleware pick up the new session cookie.
+      router.replace(returnUrl);
+      router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Authentication failed');
+      setError(
+        err instanceof Error ? err.message : 'Authentication failed. Please try again.'
+      );
     } finally {
       setIsLoading(false);
     }
