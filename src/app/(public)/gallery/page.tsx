@@ -1,3 +1,5 @@
+import { ImageGrid } from '@/src/components/gallery/image-grid';
+import { galleryImages } from '@/src/data/gallery-images';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -17,14 +19,11 @@ export default function GalleryPage() {
         </div>
       </section>
 
-      <section className="py-20">
-        <div className="container">
-          {/* Gallery component will be migrated here */}
-          <p className="text-center text-muted-foreground">
-            Gallery to be migrated from src/app/gallery/page.tsx
-          </p>
-        </div>
-      </section>
+       <section className="py-20">
+              <div className="container">
+                <ImageGrid images={galleryImages} />
+              </div>
+            </section>
     </div>
   );
 }
