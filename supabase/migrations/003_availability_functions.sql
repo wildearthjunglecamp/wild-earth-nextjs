@@ -30,49 +30,31 @@ CREATE INDEX IF NOT EXISTS idx_bookings_availability_check
 -- Check if a specific tent is available for given dates
 -- ============================================================================
 
-CREATE OR REPLACE FUNCTION check_tent_availability(
-  p_tent_id UUID,
-  p_check_in DATE,
-  p_check_out DATE
+CREATE OR REPLACE FUNCTION public.check_tent_availability(
+  p_tent_id uuid,
+  p_check_in date,
+  p_check_out date
 )
-RETURNS BOOLEAN AS $$
+RETURNS boolean
+LANGUAGE plpgsql
+STABLE
+AS $$
 BEGIN
-  -- Validate input
+  -- Optional guard (you can remove if you already validate elsewhere)
   IF p_check_in >= p_check_out THEN
-    RAISE EXCEPTION 'Check-out date must be after check-in date';
+    RETURN false;
   END IF;
 
-  -- Check if tent exists and is available
-  IF NOT EXISTS (
-    SELECT 1 FROM tents 
-    WHERE id = p_tent_id 
-    AND status = 'available'
-  ) THEN
-    RETURN FALSE;
-  END IF;
-  
-  -- Check for overlapping bookings
-  -- Date overlap logic:
-  -- - New check-in falls within existing booking
-  -- - New check-out falls within existing booking  
-  -- - New booking encompasses existing booking
   RETURN NOT EXISTS (
-    SELECT 1 FROM bookings
-    WHERE tent_id = p_tent_id
-    AND status NOT IN ('cancelled', 'checked_out')
-    AND (
-      -- Case 1: New check-in falls within existing booking
-      (p_check_in >= check_in_date AND p_check_in < check_out_date)
-      
-      -- Case 2: New check-out falls within existing booking
-      OR (p_check_out > check_in_date AND p_check_out <= check_out_date)
-      
-      -- Case 3: New booking encompasses existing booking
-      OR (p_check_in <= check_in_date AND p_check_out >= check_out_date)
-    )
+    SELECT 1
+    FROM public.bookings b
+    WHERE b.tent_id = p_tent_id
+      AND b.status NOT IN ('cancelled', 'checked_out')
+      AND b.check_in < p_check_out
+      AND b.check_out > p_check_in
   );
 END;
-$$ LANGUAGE plpgsql STABLE;
+$$;
 
 COMMENT ON FUNCTION check_tent_availability IS 
 'Check if a specific tent is available for the given date range. Returns true if available, false otherwise.';

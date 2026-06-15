@@ -18,34 +18,52 @@ import { AvailabilityService } from '@/src/services/availability.service';
 // export const dynamic = "force-dynamic"
 export async function POST(request: NextRequest) {
   try {
-      const body = await request.json();
-    // Parse request body
-    const service = new AvailabilityService();
+    const body = await request.json();
+    
     // Validate input with Zod
     const validatedData = availabilityRequestSchema.parse(body);
 
     // Create Supabase client
     const supabase = await createClient();
 
+    // Log the request for debugging
+    console.log('Availability API Request:', {
+      checkIn: validatedData.checkInDate,
+      checkOut: validatedData.checkOutDate,
+      guestCount: validatedData.guestCount,
+    });
+
     // Call the PostgreSQL function to get available tents by type
     const { data, error } = await supabase.rpc('get_available_tents_by_type', {
-      p_check_in: new Date(validatedData.checkInDate),
-      p_check_out: new Date(validatedData.checkOutDate),
+      p_check_in: validatedData.checkInDate,
+      p_check_out: validatedData.checkOutDate,
       p_guest_count: validatedData.guestCount || null,
     });
 
-    // Handle Supabase errors
+    // Handle Supabase errors with detailed logging
     if (error) {
-      console.error('Supabase error:', error);
+      console.error('Supabase RPC Error Details:', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+      });
       return NextResponse.json(
         {
           success: false,
           error: 'Database error',
           message: 'Failed to fetch availability. Please try again.',
+          debug: process.env.NODE_ENV === 'development' ? error.message : undefined,
         },
         { status: 500 }
       );
     }
+
+    // Log successful response
+    console.log('Availability API Response:', {
+      tentTypesFound: data?.length || 0,
+      totalAvailable: data?.reduce((sum: number, item: any) => sum + parseInt(item.available_count || 0), 0) || 0,
+    });
 
     // Transform data to match response schema
     const transformedData = (data || []).map((item: any) => ({

@@ -1,98 +1,128 @@
 /**
- * Login Page
- * Authentication page for admin and user login
+ * Admin Login Page
+ * Secure authentication page for campsite management dashboard
  */
 
 import { Metadata } from 'next';
-import { Tent } from 'lucide-react';
+import Image from 'next/image';
+import { AdminLoginForm } from '../../components/admin/admin-login-form';
+import { Mountain, Shield, Lock } from 'lucide-react';
 
 export const metadata: Metadata = {
-  title: 'Login | Wild Earth',
-  description: 'Sign in to your account',
+  title: 'Admin Login | Wild Earth Jungle Camp',
+  description: 'Secure access to campsite management dashboard',
 };
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-blue-50 px-4">
-      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-lg">
-        {/* Logo and title */}
-        <div className="text-center">
-          <div className="flex justify-center mb-4">
-            <Tent className="h-12 w-12 text-primary" />
-          </div>
-          <h2 className="text-3xl font-bold text-gray-900">Wild Earth</h2>
-          <p className="mt-2 text-sm text-gray-600">
-            Sign in to your account
-          </p>
+    <div className="min-h-screen flex">
+      {/* Left Side - Brand Visual (Hidden on mobile) */}
+      <div className="hidden lg:flex lg:w-1/2 relative bg-gradient-to-br from-primary via-primary-container to-primary-fixed overflow-hidden">
+        {/* Background Image */}
+        <div className="absolute inset-0">
+          <Image
+            src="/heroBg.jpeg"
+            alt="Wild Earth Campsite"
+            fill
+            className="object-cover opacity-30"
+            priority
+          />
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/90 via-primary-container/80 to-primary/70" />
         </div>
 
-        {/* Login form placeholder */}
-        <div className="mt-8 space-y-6">
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <p className="text-sm text-blue-800 text-center">
-              <strong>Note:</strong> Login functionality will be implemented with Supabase Auth.
-              This is a placeholder page for the authentication flow.
+        {/* Content Overlay */}
+        <div className="relative z-10 flex flex-col justify-between p-12 text-on-primary">
+          {/* Logo and Brand */}
+          <div className="space-y-2">
+            <div className="flex items-center space-x-3">
+              <Mountain className="h-10 w-10" />
+              <div>
+                <h1 className="text-2xl font-display font-bold">Wild Earth</h1>
+                <p className="text-sm text-primary-fixed">Jungle Camp</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Main Content */}
+          <div className="space-y-8 max-w-md">
+            <div className="space-y-4">
+              <h2 className="text-4xl font-display font-bold leading-tight">
+                Campsite Management Dashboard
+              </h2>
+              <p className="text-lg text-primary-fixed leading-relaxed">
+                Secure access to manage bookings, inventory, and operations for your wilderness retreat.
+              </p>
+            </div>
+
+            {/* Features */}
+            <div className="space-y-4">
+              <div className="flex items-start space-x-3">
+                <Shield className="h-6 w-6 mt-1 flex-shrink-0" />
+                <div>
+                  <h3 className="font-semibold">Secure Authentication</h3>
+                  <p className="text-sm text-primary-fixed">
+                    Protected access with industry-standard security
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start space-x-3">
+                <Lock className="h-6 w-6 mt-1 flex-shrink-0" />
+                <div>
+                  <h3 className="font-semibold">Admin Only</h3>
+                  <p className="text-sm text-primary-fixed">
+                    Restricted access for authorized personnel
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="text-sm text-primary-fixed">
+            <p>&copy; 2026 Wild Earth Jungle Camp. All rights reserved.</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Right Side - Login Form */}
+      <div className="flex-1 flex items-center justify-center p-6 sm:p-8 lg:p-12 bg-surface">
+        <div className="w-full max-w-md space-y-8">
+          {/* Mobile Logo (Visible only on mobile) */}
+          <div className="lg:hidden text-center space-y-2">
+            <div className="flex justify-center">
+              <div className="flex items-center space-x-2 text-primary">
+                <Mountain className="h-8 w-8" />
+                <div className="text-left">
+                  <h1 className="text-xl font-display font-bold">Wild Earth</h1>
+                  <p className="text-xs text-on-surface-variant">Jungle Camp</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Form Header */}
+          <div className="space-y-2">
+            <h2 className="text-3xl font-display font-bold text-on-surface">
+              Admin Login
+            </h2>
+            <p className="text-body-md text-on-surface-variant">
+              Sign in to access the management dashboard
             </p>
           </div>
 
-          <div className="space-y-4">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email address
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                disabled
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
-                placeholder="you@example.com"
-              />
+          {/* Login Form */}
+          <AdminLoginForm />
+
+          {/* Security Notice */}
+          <div className="pt-6 border-t border-outline-variant">
+            <div className="flex items-start space-x-2 text-xs text-on-surface-variant">
+              <Shield className="h-4 w-4 mt-0.5 flex-shrink-0" />
+              <p>
+                This is a secure area. All login attempts are monitored and logged.
+                Unauthorized access is prohibited.
+              </p>
             </div>
-
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Password
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                required
-                disabled
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
-                placeholder="••••••••"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled
-              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Sign in
-            </button>
           </div>
-
-          <div className="text-center text-sm">
-            <p className="text-gray-600">
-              Don't have an account?{' '}
-              <a href="#" className="font-medium text-primary hover:text-primary/90">
-                Sign up
-              </a>
-            </p>
-          </div>
-        </div>
-
-        {/* TODO: Implement Supabase Auth */}
-        <div className="mt-6 text-xs text-gray-500 text-center">
-          <p>TODO: Integrate Supabase Authentication</p>
-          <p className="mt-1">- Email/Password login</p>
-          <p>- OAuth providers (Google, GitHub)</p>
-          <p>- Password reset flow</p>
         </div>
       </div>
     </div>
