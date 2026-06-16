@@ -4,6 +4,7 @@ import { verifyPaymentSignature } from '../lib/payment/razorpay';
 import { pricingRepository } from '../repositories/pricing.repository';
 import type {
   CreateBookingInput,
+  CreateManualBookingInput,
   BookingResponse,
   TentItem,
   TentTypeSummary,
@@ -757,6 +758,483 @@ export async function getBookingByNumber(bookingNumber: string): Promise<Booking
       details: error.message || 'An unexpected error occurred while fetching the booking.',
     };
   }
+}
+
+// ============================================================================
+// Admin: manual (offline) booking creation
+// ============================================================================
+
+export interface ManualBookingResult {
+  success: boolean;
+  bookingNumber?: string;
+  error?: string;
+  details?: string;
+}
+
+/**
+ * Create an admin/offline booking (no Razorpay). Validates capacity, then calls
+ * the create_manual_booking RPC which assigns tents atomically with locking.
+ */
+export async function createManualBooking(
+  input: CreateManualBookingInput
+): Promise<ManualBookingResult> {
+  const supabase = await createClient();
+
+  // Capacity rule (adults fill capacity; 2 children under 5 per tent)
+  const capacity = validateTentCapacity(input.tentItems, input.adults, input.children);
+  if (!capacity.valid) {
+    return { success: false, error: 'Capacity validation failed', details: capacity.message };
+  }
+
+  const tentItemsJson = input.tentItems.map((item) => ({
+    tentTypeSlug: item.tentTypeSlug,
+    quantity: item.quantity,
+    pricePerNight: item.pricePerNight,
+  }));
+
+  const MAX_ATTEMPTS = 5;
+  let bookingNumber = '';
+  let data: any = null;
+  let error: any = null;
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    bookingNumber = generateBookingNumber();
+
+    const res = await supabase.rpc('create_manual_booking', {
+      p_booking_number: bookingNumber,
+      p_customer_name: input.customerName,
+      p_customer_email: input.customerEmail,
+      p_customer_phone: input.customerPhone,
+      p_check_in: input.checkIn,
+      p_check_out: input.checkOut,
+      p_tent_items: tentItemsJson,
+      p_adults: input.adults,
+      p_children: input.children,
+      p_total_amount: input.totalAmount,
+      p_special_requests: input.specialRequests || null,
+      p_payment_status: input.paymentStatus,
+    });
+
+    data = res.data;
+    error = res.error;
+
+    if (!error) break;
+
+    // Retry only on booking_number collision
+    if (typeof error.message === 'string' && error.message.includes('booking_number')) {
+      console.warn(`Manual booking number collision (${bookingNumber}), retrying...`);
+      continue;
+    }
+    break;
+  }
+
+  if (error) {
+    if (typeof error.message === 'string' && error.message.includes('insufficient_tents')) {
+      return { success: false, error: 'Insufficient tents available', details: error.message };
+    }
+    if (typeof error.message === 'string' && error.message.includes('invalid_tent_type')) {
+      return { success: false, error: 'Invalid tent type', details: error.message };
+    }
+    return { success: false, error: 'Booking creation failed', details: error.message };
+  }
+
+  return { success: true, bookingNumber: data?.booking_number ?? bookingNumber };
+}
+
+// ============================================================================
+// Admin: booking status transitions
+// ============================================================================
+
+export type BookingStatusAction = 'check-in' | 'check-out' | 'cancel';
+
+/**
+ * Apply a status transition to a booking (admin action).
+ * Validates the allowed transitions and updates booking_status.
+ */
+export async function updateBookingStatus(
+  bookingNumber: string,
+  action: BookingStatusAction
+): Promise<BookingResult> {
+  const supabase = await createClient();
+
+  const { data: current, error: fetchErr } = await supabase
+    .from('bookings')
+    .select('id, booking_status')
+    .eq('booking_number', bookingNumber)
+    .single();
+
+  if (fetchErr || !current) {
+    return { success: false, error: 'Booking not found' };
+  }
+
+  const cur = current.booking_status as string;
+  let nextStatus: string | null = null;
+
+  if (action === 'check-in') {
+    if (cur !== 'confirmed') {
+      return {
+        success: false,
+        error: 'Invalid transition',
+        details: `Cannot check in a booking with status "${cur}".`,
+      };
+    }
+    nextStatus = 'checked_in';
+  } else if (action === 'check-out') {
+    if (cur !== 'checked_in') {
+      return {
+        success: false,
+        error: 'Invalid transition',
+        details: `Cannot check out a booking with status "${cur}".`,
+      };
+    }
+    nextStatus = 'checked_out';
+  } else if (action === 'cancel') {
+    if (['cancelled', 'checked_out', 'no_show'].includes(cur)) {
+      return {
+        success: false,
+        error: 'Invalid transition',
+        details: `Cannot cancel a booking with status "${cur}".`,
+      };
+    }
+    nextStatus = 'cancelled';
+  }
+
+  if (!nextStatus) {
+    return { success: false, error: 'Invalid action' };
+  }
+
+  const { error: updateErr } = await supabase
+    .from('bookings')
+    .update({ booking_status: nextStatus })
+    .eq('id', current.id);
+
+  if (updateErr) {
+    return { success: false, error: 'Update failed', details: updateErr.message };
+  }
+
+  return { success: true };
+}
+
+// ============================================================================
+// Admin: bookings listing
+// ============================================================================
+
+/**
+ * UI-facing booking status values (hyphenated), as used by the admin table.
+ */
+export type AdminBookingStatus =
+  | 'confirmed'
+  | 'pending'
+  | 'checked-in'
+  | 'checked-out'
+  | 'cancelled'
+  | 'no-show';
+
+const DB_TO_UI_STATUS: Record<string, AdminBookingStatus> = {
+  pending_payment: 'pending',
+  confirmed: 'confirmed',
+  checked_in: 'checked-in',
+  checked_out: 'checked-out',
+  cancelled: 'cancelled',
+  no_show: 'no-show',
+};
+
+const UI_TO_DB_STATUS: Record<string, string> = {
+  pending: 'pending_payment',
+  confirmed: 'confirmed',
+  'checked-in': 'checked_in',
+  'checked-out': 'checked_out',
+  cancelled: 'cancelled',
+  'no-show': 'no_show',
+};
+
+/** Map a DB booking_status to the hyphenated UI status. */
+export function mapBookingStatusToUi(dbStatus: string): AdminBookingStatus {
+  return DB_TO_UI_STATUS[dbStatus] ?? 'pending';
+}
+
+export interface AdminBookingListItem {
+  id: string; // booking_number — used for display and the detail-page link
+  bookingId: string; // DB uuid
+  customerName: string;
+  phone: string;
+  email: string;
+  tentType: string; // single type name, or "Multiple (N)"
+  guests: number; // adults + children
+  checkIn: string;
+  checkOut: string;
+  nights: number;
+  amount: number;
+  status: AdminBookingStatus;
+}
+
+export interface ListBookingsParams {
+  search?: string;
+  status?: string; // UI status (hyphenated) or 'all'
+  tentTypeSlug?: string; // tent type slug or 'all'
+  page?: number;
+  pageSize?: number;
+}
+
+export interface ListBookingsResult {
+  rows: AdminBookingListItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+/**
+ * List bookings for the admin table with search, status/tent-type filters and
+ * pagination. Runs in a server context; relies on the admin's session (RLS).
+ */
+export async function listBookings(
+  params: ListBookingsParams = {}
+): Promise<ListBookingsResult> {
+  const supabase = await createClient();
+
+  const page = Math.max(1, params.page ?? 1);
+  const pageSize = Math.min(100, Math.max(1, params.pageSize ?? 10));
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
+  let query = supabase
+    .from('bookings')
+    .select(
+      `
+        id,
+        booking_number,
+        customer_name,
+        customer_email,
+        customer_phone,
+        check_in,
+        check_out,
+        adults,
+        children,
+        total_amount,
+        booking_status,
+        created_at,
+        booking_tents (
+          nights,
+          tents ( tent_types ( name, slug ) )
+        )
+      `,
+      { count: 'exact' }
+    )
+    .order('created_at', { ascending: false });
+
+  // Status filter
+  if (params.status && params.status !== 'all') {
+    const dbStatus = UI_TO_DB_STATUS[params.status];
+    if (dbStatus) query = query.eq('booking_status', dbStatus);
+  }
+
+  // Search across customer fields and booking number. Strip characters that
+  // would break the PostgREST or() filter syntax.
+  if (params.search && params.search.trim()) {
+    const q = params.search.trim().replace(/[%,()]/g, '');
+    if (q) {
+      query = query.or(
+        `customer_name.ilike.%${q}%,customer_email.ilike.%${q}%,customer_phone.ilike.%${q}%,booking_number.ilike.%${q}%`
+      );
+    }
+  }
+
+  // Tent-type filter: resolve matching booking ids first to avoid join-row
+  // inflation skewing the count/pagination on the main query.
+  if (params.tentTypeSlug && params.tentTypeSlug !== 'all') {
+    const { data: typeRows } = await supabase
+      .from('booking_tents')
+      .select('booking_id, tents!inner ( tent_types!inner ( slug ) )')
+      .eq('tents.tent_types.slug', params.tentTypeSlug);
+
+    const ids = Array.from(
+      new Set((typeRows ?? []).map((r: any) => r.booking_id))
+    );
+
+    if (ids.length === 0) {
+      return { rows: [], total: 0, page, pageSize };
+    }
+    query = query.in('id', ids);
+  }
+
+  const { data, count, error } = await query.range(from, to);
+
+  if (error) {
+    console.error('listBookings error:', error);
+    return { rows: [], total: 0, page, pageSize };
+  }
+
+  const rows: AdminBookingListItem[] = (data ?? []).map((b: any) => {
+    const typeNames: string[] = Array.from(
+      new Set(
+        (b.booking_tents ?? [])
+          .map((bt: any) => bt.tents?.tent_types?.name)
+          .filter(Boolean)
+      )
+    );
+    const tentType =
+      typeNames.length === 0
+        ? '—'
+        : typeNames.length === 1
+        ? typeNames[0]
+        : `Multiple (${typeNames.length})`;
+
+    const nights =
+      b.booking_tents?.[0]?.nights ??
+      calculateNights(b.check_in, b.check_out);
+
+    return {
+      id: b.booking_number,
+      bookingId: b.id,
+      customerName: b.customer_name,
+      phone: b.customer_phone,
+      email: b.customer_email,
+      tentType,
+      guests: (b.adults ?? 0) + (b.children ?? 0),
+      checkIn: b.check_in,
+      checkOut: b.check_out,
+      nights,
+      amount: Number(b.total_amount),
+      status: mapBookingStatusToUi(b.booking_status),
+    };
+  });
+
+  return { rows, total: count ?? 0, page, pageSize };
+}
+
+// ============================================================================
+// Admin: dashboard stats
+// ============================================================================
+
+// Statuses that count as an active/occupying booking (everything except
+// cancelled and no_show — matches the availability logic).
+const ACTIVE_BOOKING_STATUSES = [
+  'pending_payment',
+  'confirmed',
+  'checked_in',
+  'checked_out',
+];
+
+export interface DashboardStats {
+  totalBookings: number; // active bookings (excludes cancelled/no_show)
+  revenueThisMonth: number; // sum of paid bookings created this month
+  occupancyRate: number; // % of operational tents occupied today
+  availableTents: number; // operational tents free today
+  recentBookings: AdminBookingListItem[];
+}
+
+/**
+ * Aggregate the headline numbers for the admin dashboard.
+ */
+export async function getDashboardStats(): Promise<DashboardStats> {
+  const supabase = await createClient();
+
+  const now = new Date();
+  const today = now.toISOString().slice(0, 10);
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+    .toISOString()
+    .slice(0, 10);
+
+  const [
+    totalBookingsRes,
+    revenueRes,
+    totalTentsRes,
+    occupiedRes,
+    recent,
+  ] = await Promise.all([
+    // Active bookings
+    supabase
+      .from('bookings')
+      .select('id', { count: 'exact', head: true })
+      .in('booking_status', ACTIVE_BOOKING_STATUSES),
+    // Revenue this month (paid bookings created this month)
+    supabase
+      .from('bookings')
+      .select('total_amount')
+      .eq('payment_status', 'paid')
+      .gte('created_at', monthStart),
+    // Operational tents
+    supabase
+      .from('tents')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'available'),
+    // Tents occupied today (via booking_tents + overlapping active booking)
+    supabase
+      .from('booking_tents')
+      .select('tent_id, bookings!inner(check_in, check_out, booking_status)')
+      .lte('bookings.check_in', today)
+      .gt('bookings.check_out', today)
+      .in('bookings.booking_status', ACTIVE_BOOKING_STATUSES),
+    // Recent bookings
+    listBookings({ page: 1, pageSize: 5 }),
+  ]);
+
+  const revenueThisMonth = (revenueRes.data ?? []).reduce(
+    (sum: number, r: any) => sum + Number(r.total_amount || 0),
+    0
+  );
+
+  const totalTents = totalTentsRes.count ?? 0;
+  const occupiedToday = new Set(
+    (occupiedRes.data ?? []).map((r: any) => r.tent_id)
+  ).size;
+  const availableTents = Math.max(0, totalTents - occupiedToday);
+  const occupancyRate =
+    totalTents > 0 ? Math.round((occupiedToday / totalTents) * 100) : 0;
+
+  return {
+    totalBookings: totalBookingsRes.count ?? 0,
+    revenueThisMonth,
+    occupancyRate,
+    availableTents,
+    recentBookings: recent.rows,
+  };
+}
+
+export interface MonthlyRevenuePoint {
+  month: string; // short label, e.g. "Jan"
+  value: number; // paid revenue in that month
+}
+
+/**
+ * Paid revenue per month for the last `months` months (by booking date),
+ * oldest → newest, with zero-filled gaps. Drives the dashboard chart.
+ */
+export async function getMonthlyRevenue(months = 6): Promise<MonthlyRevenuePoint[]> {
+  const supabase = await createClient();
+
+  const now = new Date();
+  // First day of the earliest month in the window.
+  const windowStart = new Date(now.getFullYear(), now.getMonth() - (months - 1), 1);
+
+  const { data } = await supabase
+    .from('bookings')
+    .select('total_amount, created_at')
+    .eq('payment_status', 'paid')
+    .gte('created_at', windowStart.toISOString());
+
+  // Pre-seed an ordered bucket per month so gaps render as zero.
+  const buckets: { key: string; label: string; value: number }[] = [];
+  const indexByKey = new Map<string, number>();
+  const labelFmt = new Intl.DateTimeFormat('en-US', { month: 'short' });
+
+  for (let i = 0; i < months; i++) {
+    const d = new Date(windowStart.getFullYear(), windowStart.getMonth() + i, 1);
+    const key = `${d.getFullYear()}-${d.getMonth()}`;
+    indexByKey.set(key, buckets.length);
+    buckets.push({ key, label: labelFmt.format(d), value: 0 });
+  }
+
+  for (const row of data ?? []) {
+    const d = new Date((row as any).created_at);
+    const key = `${d.getFullYear()}-${d.getMonth()}`;
+    const idx = indexByKey.get(key);
+    if (idx !== undefined) {
+      buckets[idx].value += Number((row as any).total_amount || 0);
+    }
+  }
+
+  return buckets.map((b) => ({ month: b.label, value: b.value }));
 }
 
 // Made with Bob

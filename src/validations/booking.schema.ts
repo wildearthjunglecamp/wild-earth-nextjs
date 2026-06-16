@@ -105,6 +105,49 @@ export const createBookingSchema = z.object({
 export type CreateBookingInput = z.infer<typeof createBookingSchema>;
 
 /**
+ * Schema for an admin-created (manual / walk-in / phone) booking.
+ * No Razorpay fields; payment is recorded offline as paid or pending.
+ */
+export const createManualBookingSchema = z
+  .object({
+    customerName: z.string().min(2, 'Name must be at least 2 characters').max(100),
+    customerEmail: z.string().email('Invalid email address'),
+    customerPhone: z.string().regex(/^\+?[1-9]\d{9,14}$/, 'Invalid phone number'),
+
+    checkIn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD)'),
+    checkOut: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD)'),
+
+    tentItems: z
+      .array(tentItemSchema)
+      .min(1, 'At least one tent type must be specified')
+      .max(5, 'Maximum 5 different tent types per booking'),
+
+    adults: z.number().int().min(1, 'At least 1 adult required').max(40),
+    children: z.number().int().min(0).max(40),
+
+    totalAmount: z.number().positive('Total amount must be positive'),
+    paymentStatus: z.enum(['paid', 'pending']),
+
+    specialRequests: z.string().max(500).optional(),
+  })
+  .refine(
+    (data) => new Date(data.checkOut) > new Date(data.checkIn),
+    { message: 'Check-out date must be after check-in date', path: ['checkOut'] }
+  )
+  .refine(
+    (data) => {
+      const tentTypes = data.tentItems.map((item) => item.tentTypeSlug);
+      return tentTypes.length === new Set(tentTypes).size;
+    },
+    {
+      message: 'Duplicate tent types are not allowed. Combine quantities for the same tent type.',
+      path: ['tentItems'],
+    }
+  );
+
+export type CreateManualBookingInput = z.infer<typeof createManualBookingSchema>;
+
+/**
  * Schema for assigned tent details in response
  */
 export const assignedTentSchema = z.object({

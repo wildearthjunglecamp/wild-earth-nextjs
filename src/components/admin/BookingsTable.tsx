@@ -39,7 +39,7 @@ interface Booking {
   checkOut: string;
   nights: number;
   amount: number;
-  status: 'confirmed' | 'pending' | 'checked-in' | 'checked-out' | 'cancelled';
+  status: 'confirmed' | 'pending' | 'checked-in' | 'checked-out' | 'cancelled' | 'no-show';
   email: string;
 }
 
@@ -57,6 +57,7 @@ function getStatusBadge(status: Booking['status']) {
     'checked-in': 'bg-tertiary-container text-on-tertiary-container',
     'checked-out': 'bg-surface-container-high text-on-surface',
     cancelled: 'bg-error-container text-on-error-container',
+    'no-show': 'bg-error-container text-on-error-container',
   };
 
   const labels = {
@@ -65,6 +66,7 @@ function getStatusBadge(status: Booking['status']) {
     'checked-in': 'Checked In',
     'checked-out': 'Checked Out',
     cancelled: 'Cancelled',
+    'no-show': 'No Show',
   };
 
   return (
@@ -262,7 +264,7 @@ export function BookingsTable({ bookings }: BookingsTableProps) {
                       
                       <DropdownMenuSeparator />
                       
-                      {booking.status !== 'cancelled' && booking.status !== 'checked-out' && (
+                      {booking.status !== 'cancelled' && booking.status !== 'checked-out' && booking.status !== 'no-show' && (
                         <DropdownMenuItem
                           onClick={() => handleAction('cancel', booking.id)}
                           className="cursor-pointer text-error focus:text-error font-sans"
