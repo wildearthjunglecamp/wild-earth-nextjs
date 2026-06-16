@@ -6,6 +6,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Badge } from '@/src/components/ui/badge';
 import { Button } from '@/src/components/ui/button';
 import {
@@ -16,6 +17,8 @@ import {
   DropdownMenuTrigger,
 } from '@/src/components/ui/dropdown-menu';
 import { Edit, Trash2, MoreVertical } from 'lucide-react';
+import { useToast } from '@/src/hooks/use-toast';
+import { AddExpenseDialog, type ExpenseFormValue } from '@/src/components/admin/AddExpenseDialog';
 
 interface Expense {
   id: string;
@@ -76,16 +79,27 @@ function formatDate(dateString: string) {
 }
 
 export function ExpensesTable({ expenses }: ExpensesTableProps) {
-  const [selectedExpense, setSelectedExpense] = useState<string | null>(null);
+  const router = useRouter();
+  const { toast } = useToast();
+  const [editing, setEditing] = useState<ExpenseFormValue | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const handleEdit = (expenseId: string) => {
-    console.log('Edit expense:', expenseId);
-    // TODO: Open edit dialog
-  };
-
-  const handleDelete = (expenseId: string) => {
-    console.log('Delete expense:', expenseId);
-    // TODO: Show confirmation dialog
+  const handleDelete = async (expenseId: string) => {
+    if (!window.confirm('Delete this expense? This cannot be undone.')) return;
+    setDeletingId(expenseId);
+    try {
+      const res = await fetch(`/api/admin/expenses/${expenseId}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to delete expense');
+      }
+      toast({ title: 'Expense deleted' });
+      router.refresh();
+    } catch (err: any) {
+      toast({ title: 'Delete failed', description: err?.message, variant: 'destructive' });
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   return (
@@ -163,7 +177,7 @@ export function ExpensesTable({ expenses }: ExpensesTableProps) {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-40">
                     <DropdownMenuItem
-                      onClick={() => handleEdit(expense.id)}
+                      onClick={() => setEditing(expense)}
                       className="cursor-pointer font-sans"
                     >
                       <Edit className="mr-2 h-4 w-4" />
@@ -172,6 +186,7 @@ export function ExpensesTable({ expenses }: ExpensesTableProps) {
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
                       onClick={() => handleDelete(expense.id)}
+                      disabled={deletingId === expense.id}
                       className="cursor-pointer text-error focus:text-error font-sans"
                     >
                       <Trash2 className="mr-2 h-4 w-4" />
@@ -184,6 +199,15 @@ export function ExpensesTable({ expenses }: ExpensesTableProps) {
           ))}
         </tbody>
       </table>
+
+      {/* Edit dialog (controlled by the row menu) */}
+      <AddExpenseDialog
+        expense={editing ?? undefined}
+        open={editing !== null}
+        onOpenChange={(o) => {
+          if (!o) setEditing(null);
+        }}
+      />
     </div>
   );
 }

@@ -1,19 +1,8 @@
-import { Metadata } from 'next';
+import { redirect } from 'next/navigation';
 
-export const metadata: Metadata = {
-  title: 'Revenue Report | Admin',
-  description: 'View revenue analytics',
-};
-
+// Revenue detail is covered by the main Reports page for now.
 export default function RevenueReportPage() {
-  return (
-    <div>
-      <h1 className="text-3xl font-bold mb-8">Revenue Report</h1>
-      <div className="bg-white rounded-lg shadow p-6">
-        <p className="text-gray-500">Revenue report component to be implemented</p>
-      </div>
-    </div>
-  );
+  redirect('/admin/reports');
 }
 
 // Made with Bob
