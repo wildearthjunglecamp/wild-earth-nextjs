@@ -111,7 +111,7 @@ export function CalendarView({ data, onDayClick }: CalendarViewProps) {
                     getBookingCountColor(day.availability)
                   )}
                 >
-                  {day.bookings} occupied
+                  {day.bookings} <span className="hidden md:inline">occupied</span>
                 </div>
                 
                 {/* Visual indicator bar */}

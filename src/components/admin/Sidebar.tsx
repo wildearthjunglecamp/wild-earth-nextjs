@@ -38,7 +38,7 @@ const navigationItems: NavItem[] = [
     href: '/admin/bookings',
     label: 'Bookings',
     icon: FileText,
-    badge: 'New', // TODO: Replace with dynamic count
+    // badge: 'New', // TODO: Replace with dynamic count
   },
   {
     href: '/admin/calendar',
@@ -70,11 +70,11 @@ const navigationItems: NavItem[] = [
     label: 'Reports',
     icon: FileText,
   },
-  {
-    href: '/admin/settings',
-    label: 'Settings',
-    icon: Settings,
-  },
+  // {
+  //   href: '/admin/settings',
+  //   label: 'Settings',
+  //   icon: Settings,
+  // },
 ];
 
 /**
@@ -109,7 +109,7 @@ export function Sidebar({ isOpen, onClose, className }: SidebarProps) {
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed top-0 left-0 z-50 h-screen w-64 bg-primary text-on-primary transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:z-auto shadow-level-2',
+          'fixed top-0 left-0 z-50 h-auto w-64 bg-primary text-on-primary transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:z-auto shadow-level-2',
           isOpen ? 'translate-x-0' : '-translate-x-full',
           className
         )}
@@ -187,7 +187,7 @@ export function Sidebar({ isOpen, onClose, className }: SidebarProps) {
           <div className="mt-8 pt-4 border-t border-primary-container">
             <div className="px-3 py-2 text-xs text-on-primary/50 font-sans">
               <p>Version 1.0.0</p>
-              <p className="mt-1">© 2024 Wild Earth</p>
+              <p className="mt-1">© 2026 Wild Earth</p>
             </div>
           </div>
         </ScrollArea>

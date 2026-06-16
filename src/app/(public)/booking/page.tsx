@@ -441,7 +441,7 @@ export default function BookingPage() {
   return (
     <div className="min-h-screen bg-surface-50">
       {/* Hero Section */}
-      <section className="bg-gradient-to-br from-primary-900 via-primary-800 to-primary-900 text-white py-12">
+      <section className="bg-gradient-to-br from-primary-900 via-primary-800 to-primary-900 text-white pt-28 pb-12">
         <div className="container px-4">
           <div className="max-w-5xl mx-auto text-center">
             <h1 className="font-display text-3xl md:text-4xl font-bold mb-2">

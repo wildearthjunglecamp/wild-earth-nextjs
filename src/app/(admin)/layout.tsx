@@ -81,9 +81,11 @@ export default function AdminLayout({
           {/* Footer */}
           <footer className="border-t border-outline-variant bg-surface-container-lowest py-4 px-4 lg:px-8">
             <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center text-sm text-on-surface-variant font-sans">
-              <p>© 2024 Wild Earth Campsite. All rights reserved.</p>
+              <p>© 2026 Wild Earth Jungle Camp. All rights reserved.</p>
               <p className="mt-2 sm:mt-0">
-                Made with ❤️ by Bob
+                Made with ❤️ by  <a href="www.xenolve.com" target='_blank'>
+                   Xenolve
+                  </a>
               </p>
             </div>
           </footer>

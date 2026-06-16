@@ -127,28 +127,28 @@ const tentTypes = [
   {
     name: 'Twin Sharing Small Tent',
     capacity: 2,
-    price: 1500,
+    price: 3999,
     features: ['Cozy Interior', 'Premium Bedding', 'Private Space'],
     image: '/img1.jpeg',
   },
   {
     name: 'Twin Sharing Semi Big Tent',
     capacity: 2,
-    price: 1800,
+    price: 4999,
     features: ['Spacious Layout', 'Luxury Amenities', 'Scenic Views'],
     image: '/img2.jpeg',
   },
   {
     name: 'Three Sharing Jungle Tent',
     capacity: 3,
-    price: 2400,
+    price: 7499,
     features: ['Family Friendly', 'Extra Space', 'Nature Immersion'],
     image: '/img3.jpeg',
   },
   {
     name: 'Four Sharing Jungle Tent',
     capacity: 4,
-    price: 3200,
+    price: 7999,
     features: ['Group Accommodation', 'Premium Comfort', 'Adventure Ready'],
     image: '/img4.jpeg',
   },
@@ -238,7 +238,7 @@ export default function HomePage() {
               </Button>
             </Link>
             <Link href="#tents">
-              <Button size="lg" variant="outline" className="border-2 border-white text-white hover:bg-white hover:text-primary-900 px-8 py-6 text-lg font-semibold">
+              <Button size="lg" variant="outline" className="border-2 border-white text-primary-600 hover:bg-white hover:text-primary-900 px-8 py-6 text-lg font-semibold">
                 View Tents
               </Button>
             </Link>
@@ -322,7 +322,7 @@ export default function HomePage() {
                     ))}
                   </ul>
                   <Link href="/availability">
-                    <Button className="w-full bg-primary-600 hover:bg-primary-700">
+                    <Button className="w-full bg-primary-600 text-white hover:bg-primary-700">
                       Book Now
                     </Button>
                   </Link>
@@ -572,7 +572,7 @@ export default function HomePage() {
               </Button>
             </Link>
             <Link href="tel:+919876543210">
-              <Button size="lg" variant="outline" className="border-2 border-white text-white hover:bg-white hover:text-primary-900 px-10 py-6 text-lg font-semibold">
+              <Button size="lg" variant="outline" className="border-2 border-white text-primary-900 hover:bg-white hover:text-primary-900 px-10 py-6 text-lg font-semibold">
                 Call Us Now
               </Button>
             </Link>

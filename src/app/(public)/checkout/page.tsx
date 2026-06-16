@@ -94,8 +94,8 @@ const ADDON_PRICES = {
 };
 
 // Tax and fee percentages
-const TAX_RATE = 0.18; // 18% GST
-const PLATFORM_FEE_RATE = 0.02; // 2% platform fee
+const TAX_RATE = 0.0; // 18% GST
+const PLATFORM_FEE_RATE = 0.0; // 2% platform fee
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -649,7 +649,7 @@ export default function CheckoutPage() {
           {/* Platform Fee */}
           <div className="flex items-center justify-between">
             <span className="font-body text-sm text-secondary-600">
-              Platform Fee <span className="text-xs">(2%)</span>
+              Platform Fee <span className="text-xs">(Free)</span>
             </span>
             <span className="font-body text-sm font-medium text-primary-900">
               ₹{breakdown.platformFee.toLocaleString()}
@@ -659,7 +659,7 @@ export default function CheckoutPage() {
           {/* Tax */}
           <div className="flex items-center justify-between">
             <span className="font-body text-sm text-secondary-600">
-              GST <span className="text-xs">(18%)</span>
+              GST <span className="text-xs">(Included)</span>
             </span>
             <span className="font-body text-sm font-medium text-primary-900">
               ₹{breakdown.tax.toLocaleString()}
@@ -821,7 +821,7 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-surface-50 via-white to-primary-50">
+    <div className="min-h-screen pt-20 bg-gradient-to-br from-surface-50 via-white to-primary-50">
       {/* Breadcrumb Navigation */}
       <div className="bg-white border-b border-surface-200">
         <div className="container mx-auto px-4 py-4">
@@ -929,7 +929,10 @@ export default function CheckoutPage() {
                     <Alert>
                       <AlertCircle className="h-4 w-4" />
                       <AlertDescription className="text-xs">
-                        <strong>Cancellation Policy:</strong> Free cancellation up to 48 hours before check-in. 50% refund for cancellations within 48 hours.
+                        <strong>Cancellation Policy:</strong>Call us at 
+                        <a href="tel:+919876543210" className="text-primary-600 hover:underline font-medium">
+                         +91 98765 43210
+                      </a>
                       </AlertDescription>
                     </Alert>
                   </div>

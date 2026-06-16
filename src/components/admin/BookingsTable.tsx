@@ -28,6 +28,7 @@ import {
   MoreVertical,
   Users,
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 interface Booking {
   id: string;
@@ -52,9 +53,9 @@ interface BookingsTableProps {
  */
 function getStatusBadge(status: Booking['status']) {
   const styles = {
-    confirmed: 'bg-primary text-on-primary',
+    confirmed: 'bg-primary !text-white',
     pending: 'bg-secondary-container text-on-secondary-container',
-    'checked-in': 'bg-tertiary-container text-on-tertiary-container',
+    'checked-in': 'bg-tertiary-container !text-white',
     'checked-out': 'bg-surface-container-high text-on-surface',
     cancelled: 'bg-error-container text-on-error-container',
     'no-show': 'bg-error-container text-on-error-container',
@@ -70,8 +71,8 @@ function getStatusBadge(status: Booking['status']) {
   };
 
   return (
-    <Badge className={`${styles[status]} text-label-sm font-sans`}>
-      ● {labels[status]}
+    <Badge variant={'default'} className={`${styles[status]} p-2 text-label-sm font-sans`}>
+      {labels[status]}
     </Badge>
   );
 }
@@ -86,7 +87,7 @@ function formatDate(dateString: string) {
 
 export function BookingsTable({ bookings }: BookingsTableProps) {
   const [selectedBooking, setSelectedBooking] = useState<string | null>(null);
-
+  const router = useRouter()
   const handleAction = (action: string, bookingId: string) => {
     console.log(`Action: ${action} for booking: ${bookingId}`);
     // TODO: Implement actual actions
@@ -120,17 +121,19 @@ export function BookingsTable({ bookings }: BookingsTableProps) {
               <th className="px-6 py-4 text-left text-label-md font-display text-on-surface-variant uppercase">
                 Status
               </th>
-              <th className="px-6 py-4 text-right text-label-md font-display text-on-surface-variant uppercase">
+              {/* <th className="px-6 py-4 text-right text-label-md font-display text-on-surface-variant uppercase">
                 Actions
-              </th>
+              </th> */}
             </tr>
           </thead>
           <tbody className="divide-y divide-outline-variant">
             {bookings.map((booking) => (
               <tr
                 key={booking.id}
-                className="hover:bg-surface-container transition-colors"
+                className="hover:bg-surface-container cursor-pointer transition-colors"
+                onClick={()=>router.push(`/admin/bookings/${booking.id}`)}
               >
+              
                 {/* Booking ID */}
                 <td className="px-6 py-4">
                   <Link
@@ -155,7 +158,7 @@ export function BookingsTable({ bookings }: BookingsTableProps) {
 
                 {/* Accommodation */}
                 <td className="px-6 py-4">
-                  <Badge variant="secondary" className="text-label-sm font-sans bg-tertiary-container text-on-tertiary-container">
+                  <Badge variant="secondary" className="text-label-sm font-sans bg-tertiary-container text-white">
                     {booking.tentType}
                   </Badge>
                 </td>
@@ -193,7 +196,7 @@ export function BookingsTable({ bookings }: BookingsTableProps) {
                 </td>
 
                 {/* Actions */}
-                <td className="px-6 py-4 text-right">
+               {/* <td className="px-6 py-4 text-right">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button
@@ -272,11 +275,12 @@ export function BookingsTable({ bookings }: BookingsTableProps) {
                           <X className="mr-2 h-4 w-4" />
                           Cancel Booking
                         </DropdownMenuItem>
-                      )}
+                      )} 
                     </DropdownMenuContent>
                   </DropdownMenu>
-                </td>
+                </td>*/}
               </tr>
+              
             ))}
           </tbody>
         </table>

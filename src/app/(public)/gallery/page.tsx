@@ -9,11 +9,11 @@ export const metadata: Metadata = {
 
 export default function GalleryPage() {
   return (
-    <div className="min-h-screen pt-20">
-      <section className="py-20 bg-primary text-white">
+    <div className="min-h-screen">
+      <section className="pt-28 pb-20 bg-primary text-white">
         <div className="container text-center">
-          <h1 className="text-4xl md:text-5xl font-bold mb-6">Gallery</h1>
-          <p className="text-xl max-w-2xl mx-auto">
+          <h1 className="font-display text-4xl md:text-5xl font-bold mb-6">Gallery</h1>
+          <p className="font-sans text-xl max-w-2xl mx-auto">
             Explore the beauty of Wild Earth Jungle Camp
           </p>
         </div>

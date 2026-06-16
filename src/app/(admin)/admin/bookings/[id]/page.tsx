@@ -29,9 +29,9 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic';
 
 const STATUS_BADGE: Record<string, string> = {
-  confirmed: 'bg-primary text-on-primary',
+  confirmed: 'bg-primary !text-white',
   pending: 'bg-secondary-container text-on-secondary-container',
-  'checked-in': 'bg-tertiary-container text-on-tertiary-container',
+  'checked-in': 'bg-tertiary-container !text-white',
   'checked-out': 'bg-surface-container-high text-on-surface',
   cancelled: 'bg-error-container text-on-error-container',
   'no-show': 'bg-error-container text-on-error-container',
@@ -79,8 +79,8 @@ export default async function BookingDetailPage({ params }: BookingDetailPagePro
             <h1 className="text-headline-md font-display text-on-surface">
               Booking #{booking.bookingNumber}
             </h1>
-            <Badge className={`${STATUS_BADGE[uiStatus]} text-label-md font-sans px-4 py-1`}>
-              ● {STATUS_LABEL[uiStatus]}
+            <Badge className={`${STATUS_BADGE[uiStatus]} text-label-md p-3 font-sans px-4 py-1`}>
+              {STATUS_LABEL[uiStatus]}
             </Badge>
           </div>
           <p className="text-body-md font-sans text-on-surface-variant mt-1">

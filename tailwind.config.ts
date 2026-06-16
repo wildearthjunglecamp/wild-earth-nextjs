@@ -12,6 +12,7 @@ const config: Config = {
         // Wilderness Refined Design System
         surface: {
           DEFAULT: '#f9faf6',
+          50: '#f9faf6',
           dim: '#dadad7',
           bright: '#f9faf6',
           'container-lowest': '#ffffff',
@@ -22,12 +23,32 @@ const config: Config = {
         },
         primary: {
           DEFAULT: '#012d1d',
+          50:  '#f0f7f4',
+          100: '#d4ece0',
+          200: '#a5d0b9',
+          300: '#7ab599',
+          400: '#4f9978',
+          500: '#2d7a5a',
+          600: '#1b4332',
+          700: '#143526',
+          800: '#0d261b',
+          900: '#012d1d',
           container: '#1b4332',
           fixed: '#c1ecd4',
           'fixed-dim': '#a5d0b9',
         },
         secondary: {
           DEFAULT: '#5e5e5c',
+          50:  '#f5f5f4',
+          100: '#e8e8e5',
+          200: '#d1d1ce',
+          300: '#b0b0ad',
+          400: '#8f8f8c',
+          500: '#6e6e6b',
+          600: '#5e5e5c',
+          700: '#4a4a48',
+          800: '#363634',
+          900: '#222220',
           container: '#e1dfdc',
         },
         tertiary: {
@@ -76,9 +97,9 @@ const config: Config = {
         'surface-tint': '#3f6653',
       },
       fontFamily: {
-        display: ['Manrope', 'sans-serif'],
-        sans: ['Plus Jakarta Sans', 'sans-serif'],
-        serif: ['var(--font-playfair)'],
+        display: ['var(--font-manrope)', 'Manrope', 'sans-serif'],
+        sans: ['var(--font-jakarta)', 'Plus Jakarta Sans', 'sans-serif'],
+        serif: ['Georgia', 'serif'],
       },
       fontSize: {
         'display-lg': ['48px', { lineHeight: '56px', letterSpacing: '-0.02em', fontWeight: '700' }],

@@ -204,13 +204,13 @@ export default function AvailabilityPage() {
   return (
     <div className="min-h-screen bg-surface-50">
       {/* Hero Section */}
-      <section className="bg-gradient-to-br from-primary-900 via-primary-800 to-primary-900 text-white py-16">
+      <section className="bg-gradient-to-br from-primary-900 via-primary-800 to-primary-900 text-white pt-28 pb-16">
         <div className="container px-4">
           <div className="max-w-3xl mx-auto text-center">
             <h1 className="font-display text-4xl md:text-5xl font-bold mb-4">
               Check Availability
             </h1>
-            <p className="font-body text-xl text-primary-100">
+            <p className="font-sans text-xl text-primary-100">
               Find the perfect dates for your wilderness adventure
             </p>
           </div>
@@ -370,7 +370,7 @@ export default function AvailabilityPage() {
                                     <div className="flex items-center gap-2 text-secondary-600">
                                       <Users className="h-4 w-4" />
                                       <span className="font-body text-sm">
-                                        Up to {tent.capacity} guests
+                                        Up to {tent.capacity} guests and 2 children below the age of 5
                                       </span>
                                     </div>
                                   </div>
