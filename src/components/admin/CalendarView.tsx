@@ -10,6 +10,7 @@ import { cn } from '@/src/lib/utils';
 interface CalendarDay {
   date: number;
   month: 'prev' | 'current' | 'next';
+  iso?: string;
   bookings: number;
   availability: 'available' | 'limited' | 'full';
   today?: boolean;
@@ -23,6 +24,7 @@ interface CalendarData {
 
 interface CalendarViewProps {
   data: CalendarData;
+  onDayClick?: (iso: string) => void;
 }
 
 /**
@@ -49,7 +51,7 @@ function getBookingCountColor(availability: CalendarDay['availability']) {
   return colors[availability];
 }
 
-export function CalendarView({ data }: CalendarViewProps) {
+export function CalendarView({ data, onDayClick }: CalendarViewProps) {
   const weekDays = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
   return (
@@ -71,10 +73,13 @@ export function CalendarView({ data }: CalendarViewProps) {
         {data.days.map((day, index) => (
           <div
             key={index}
+            onClick={() => {
+              if (day.month === 'current' && day.iso) onDayClick?.(day.iso);
+            }}
             className={cn(
-              'relative min-h-[120px] p-3 rounded-lg border-2 transition-all cursor-pointer hover:shadow-level-1',
+              'relative min-h-[120px] p-3 rounded-lg border-2 transition-all hover:shadow-level-1',
               day.month === 'current'
-                ? getAvailabilityColor(day.availability)
+                ? `${getAvailabilityColor(day.availability)} cursor-pointer`
                 : 'bg-surface-container/50 border-outline-variant/30',
               day.today && 'ring-2 ring-primary ring-offset-2'
             )}
@@ -106,7 +111,7 @@ export function CalendarView({ data }: CalendarViewProps) {
                     getBookingCountColor(day.availability)
                   )}
                 >
-                  {day.bookings} Booking{day.bookings !== 1 ? 's' : ''}
+                  {day.bookings} occupied
                 </div>
                 
                 {/* Visual indicator bar */}

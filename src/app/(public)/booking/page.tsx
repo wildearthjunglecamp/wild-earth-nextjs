@@ -34,6 +34,8 @@ interface SelectedTent {
   tentTypeName: string;
   capacity: number;
   basePrice: number;
+  effectivePrice: number;
+  stayTotal: number;
   quantity: number;
 }
 
@@ -339,13 +341,13 @@ export default function BookingPage() {
                     {tent.tentTypeName}
                   </div>
                   <div className="font-body text-xs text-secondary-600">
-                    {tent.quantity} × ₹{tent.basePrice.toLocaleString()} × {bookingData.nights} nights
+                    {tent.quantity} × ₹{tent.effectivePrice.toLocaleString()} × {bookingData.nights} nights
                   </div>
                   <div className="font-body text-xs text-secondary-500">
                     {tent.capacity * tent.quantity} guests
                   </div>
                   <div className="font-body text-sm font-semibold text-primary-900 mt-1">
-                    ₹{(tent.basePrice * tent.quantity * bookingData.nights).toLocaleString()}
+                    ₹{(tent.stayTotal * tent.quantity).toLocaleString()}
                   </div>
                 </div>
               ))}
@@ -528,10 +530,10 @@ export default function BookingPage() {
                                 </div>
                                 <div className="text-right">
                                   <div className="font-body text-sm text-secondary-600">
-                                    ₹{tent.basePrice.toLocaleString()} × {tent.quantity} × {bookingData.nights}
+                                    ₹{tent.effectivePrice.toLocaleString()} × {tent.quantity} × {bookingData.nights}
                                   </div>
                                   <div className="font-display text-xl font-bold text-primary-900">
-                                    ₹{(tent.basePrice * tent.quantity * bookingData.nights).toLocaleString()}
+                                    ₹{(tent.stayTotal * tent.quantity).toLocaleString()}
                                   </div>
                                 </div>
                               </div>
@@ -899,7 +901,7 @@ export default function BookingPage() {
                                   </div>
                                 </div>
                                 <div className="font-body text-sm font-semibold text-primary-900">
-                                  ₹{(tent.basePrice * tent.quantity * bookingData.nights).toLocaleString()}
+                                  ₹{(tent.stayTotal * tent.quantity).toLocaleString()}
                                 </div>
                               </div>
                             </div>

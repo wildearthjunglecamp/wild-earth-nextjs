@@ -10,6 +10,7 @@ import { createClient } from '../../../lib/supabase/server';
 import { availabilityRequestSchema } from '../../../validations/availability.schema';
 import { ZodError } from 'zod';
 import { AvailabilityService } from '@/src/services/availability.service';
+import { pricingService } from '@/src/services/pricing.service';
 
 /**
  * POST /api/availability
@@ -92,17 +93,38 @@ export async function POST(request: NextRequest) {
     const checkOut = new Date(validatedData.checkOutDate);
     const nights = Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24));
 
+    // Enrich with date-specific effective pricing (quantity=1; frontend multiplies by qty).
+    const enrichedData = await Promise.all(
+      transformedData.map(async (tent: any) => {
+        try {
+          const stayTotal = await pricingService.calculateTotalForRange(
+            tent.tentTypeId,
+            validatedData.checkInDate,
+            validatedData.checkOutDate,
+            1
+          );
+          return {
+            ...tent,
+            effectivePrice: nights > 0 ? Math.round(stayTotal / nights) : tent.basePrice,
+            stayTotal,
+          };
+        } catch {
+          return { ...tent, effectivePrice: tent.basePrice, stayTotal: tent.basePrice * nights };
+        }
+      })
+    );
+
     // Return success response
     return NextResponse.json(
       {
         success: true,
-        data: transformedData,
+        data: enrichedData,
         meta: {
           checkIn: validatedData.checkInDate,
           checkOut: validatedData.checkOutDate,
           nights,
           guestCount: validatedData.guestCount,
-          totalAvailable: transformedData.reduce(
+          totalAvailable: enrichedData.reduce(
             (sum: number, type: any) => sum + type.availableCount,
             0
           ),

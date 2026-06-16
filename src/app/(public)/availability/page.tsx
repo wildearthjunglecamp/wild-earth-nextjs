@@ -19,6 +19,8 @@ interface TentType {
   tentTypeName: string;
   capacity: number;
   basePrice: number;
+  effectivePrice: number;  // per-night avg after date-specific overrides
+  stayTotal: number;       // full-stay total for 1 tent
   description: string;
   amenities: string[];
   images: string[];
@@ -46,6 +48,8 @@ interface SelectedTent {
   tentTypeName: string;
   capacity: number;
   basePrice: number;
+  effectivePrice: number;
+  stayTotal: number;
   quantity: number;
 }
 
@@ -142,6 +146,8 @@ export default function AvailabilityPage() {
         tentTypeName: tent.tentTypeName,
         capacity: tent.capacity,
         basePrice: tent.basePrice,
+        effectivePrice: tent.effectivePrice,
+        stayTotal: tent.stayTotal,
         quantity: 1,
       });
     }
@@ -165,12 +171,12 @@ export default function AvailabilityPage() {
   const calculateTotals = () => {
     let totalGuests = 0;
     let totalPrice = 0;
-    
+
     selectedTents.forEach((tent) => {
       totalGuests += tent.capacity * tent.quantity;
-      totalPrice += tent.basePrice * tent.quantity * (availabilityData?.meta.nights || 1);
+      totalPrice += tent.stayTotal * tent.quantity;
     });
-    
+
     return { totalGuests, totalPrice };
   };
 
@@ -424,13 +430,16 @@ export default function AvailabilityPage() {
                               <div className="flex flex-col items-end justify-between md:w-48">
                                 <div className="text-right mb-4">
                                   <div className="font-display text-3xl font-bold text-primary-900">
-                                    ₹{tent.basePrice.toLocaleString()}
+                                    ₹{tent.effectivePrice.toLocaleString()}
                                   </div>
                                   <div className="font-body text-sm text-secondary-600">
                                     per night
+                                    {tent.effectivePrice !== tent.basePrice && (
+                                      <span className="ml-1 text-xs text-amber-600">(custom)</span>
+                                    )}
                                   </div>
                                   <div className="font-body text-xs text-secondary-500 mt-1">
-                                    ₹{(tent.basePrice * availabilityData.meta.nights).toLocaleString()} total
+                                    ₹{tent.stayTotal.toLocaleString()} total
                                   </div>
                                 </div>
 
@@ -511,7 +520,7 @@ export default function AvailabilityPage() {
                                       {tent.tentTypeName}
                                     </div>
                                     <div className="font-body text-xs text-secondary-600">
-                                      {tent.quantity} × ₹{tent.basePrice.toLocaleString()} × {availabilityData.meta.nights} nights
+                                      {tent.quantity} × ₹{tent.effectivePrice.toLocaleString()} × {availabilityData.meta.nights} nights
                                     </div>
                                     <div className="font-body text-xs text-secondary-500">
                                       {tent.capacity * tent.quantity} guests
@@ -519,7 +528,7 @@ export default function AvailabilityPage() {
                                   </div>
                                   <div className="text-right">
                                     <div className="font-body text-sm font-semibold text-primary-900">
-                                      ₹{(tent.basePrice * tent.quantity * availabilityData.meta.nights).toLocaleString()}
+                                      ₹{(tent.stayTotal * tent.quantity).toLocaleString()}
                                     </div>
                                     <Button
                                       variant="ghost"
