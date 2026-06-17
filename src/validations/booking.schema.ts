@@ -24,7 +24,7 @@ export const createBookingSchema = z.object({
   // Customer Information
   customerName: z.string().min(2, 'Name must be at least 2 characters').max(100),
   customerEmail: z.string().email('Invalid email address'),
-  customerPhone: z.string().regex(/^\+?[1-9]\d{9,14}$/, 'Invalid phone number'),
+  customerPhone: z.string().regex(/^\+?[\d\s\-\(\)]{10,20}$/, 'Invalid phone number'),
 
   // Booking Dates
   checkIn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD)'),
@@ -112,7 +112,7 @@ export const createManualBookingSchema = z
   .object({
     customerName: z.string().min(2, 'Name must be at least 2 characters').max(100),
     customerEmail: z.string().email('Invalid email address'),
-    customerPhone: z.string().regex(/^\+?[1-9]\d{9,14}$/, 'Invalid phone number'),
+    customerPhone: z.string().regex(/^\+?[\d\s\-\(\)]{10,20}$/, 'Invalid phone number'),
 
     checkIn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD)'),
     checkOut: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD)'),

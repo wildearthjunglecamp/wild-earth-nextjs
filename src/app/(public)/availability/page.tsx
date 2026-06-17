@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { Calendar, Users, Check, X, Loader2, AlertCircle, ChevronRight } from 'lucide-react';
+import { Calendar, Users, Check, X, Loader2, AlertCircle, ChevronRight, Minus, Plus } from 'lucide-react';
 import { Button } from '@/src/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/src/components/ui/card';
 import { Badge } from '@/src/components/ui/badge';
@@ -446,16 +446,33 @@ export default function AvailabilityPage() {
                                 {!isSoldOut && (
                                   <div className="w-full space-y-2">
                                     {isSelected && selectedTent && (
-                                      <div className="flex items-center gap-2 mb-2">
+                                      <div className="flex items-center gap-3 mb-2">
                                         <Label className="font-body text-xs text-secondary-700">Qty:</Label>
-                                        <Input
-                                          type="number"
-                                          min="1"
-                                          max={tent.availableCount}
-                                          value={selectedTent.quantity}
-                                          onChange={(e) => updateTentQuantity(tent.tentTypeId, parseInt(e.target.value) || 1)}
-                                          className="w-20 h-8 text-center"
-                                        />
+                                        <div className="flex items-center border border-secondary-300 rounded-md">
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => updateTentQuantity(tent.tentTypeId, Math.max(1, selectedTent.quantity - 1))}
+                                            disabled={selectedTent.quantity <= 1}
+                                            className="h-8 w-8 p-0 hover:bg-secondary-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                                          >
+                                            <Minus className="h-4 w-4" />
+                                          </Button>
+                                          <div className="w-12 h-8 flex items-center justify-center font-body text-sm font-medium border-x border-secondary-300">
+                                            {selectedTent.quantity}
+                                          </div>
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => updateTentQuantity(tent.tentTypeId, Math.min(tent.availableCount, selectedTent.quantity + 1))}
+                                            disabled={selectedTent.quantity >= tent.availableCount}
+                                            className="h-8 w-8 p-0 hover:bg-secondary-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                                          >
+                                            <Plus className="h-4 w-4" />
+                                          </Button>
+                                        </div>
                                       </div>
                                     )}
                                     <Button

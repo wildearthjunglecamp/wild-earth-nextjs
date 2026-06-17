@@ -356,7 +356,7 @@ export default function CheckoutPage() {
           <div className="flex flex-col sm:flex-row gap-3 pt-4">
             <Button
               onClick={() => router.push('/booking-success')}
-              className="flex-1 bg-primary-600 hover:bg-primary-700 text-white"
+              className="flex-1 p-3 bg-primary-600 hover:bg-primary-700 text-white"
               size="lg"
             >
               <CheckCircle2 className="h-5 w-5 mr-2" />
@@ -365,7 +365,7 @@ export default function CheckoutPage() {
             <Button
               onClick={() => router.push('/')}
               variant="outline"
-              className="flex-1 border-primary-300 text-primary-700 hover:bg-primary-50"
+              className="flex-1 p-3 border-primary-300 text-primary-700 hover:bg-primary-50"
               size="lg"
             >
               <Home className="h-5 w-5 mr-2" />

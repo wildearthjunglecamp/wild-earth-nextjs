@@ -1,4 +1,4 @@
-'use client';
+  'use client';
 
 /**
  * Inventory Manager
@@ -21,6 +21,7 @@ import {
   Ban,
   Trash2,
   Loader2,
+  Minus,
 } from 'lucide-react';
 import { Button } from '@/src/components/ui/button';
 import { Badge } from '@/src/components/ui/badge';
@@ -375,7 +376,7 @@ export function InventoryManager({ tents, items, summary }: InventoryManagerProp
                           ) : (
                             <div className="flex items-center gap-2">
                               <span className="text-on-surface">{item.quantity}</span>
-                              <Button
+                              {/* <Button
                                 size="sm"
                                 variant="ghost"
                                 onClick={() => {
@@ -385,7 +386,7 @@ export function InventoryManager({ tents, items, summary }: InventoryManagerProp
                                 className="h-8 w-8 p-0"
                               >
                                 <Edit2 className="h-3.5 w-3.5 text-on-surface-variant" />
-                              </Button>
+                              </Button> */}
                             </div>
                           )}
                         </TableCell>
@@ -459,7 +460,30 @@ export function InventoryManager({ tents, items, summary }: InventoryManagerProp
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
                 <Label htmlFor="i-qty">Quantity</Label>
-                <Input id="i-qty" type="number" min={0} value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} />
+                <div className="flex items-center border border-surface-300 rounded-md">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setForm({ ...form, quantity: Math.max(0, parseInt(form.quantity) - 1).toString() })}
+                    disabled={parseInt(form.quantity) <= 0}
+                    className="h-10 w-10 p-0 hover:bg-surface-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Minus className="h-4 w-4" />
+                  </Button>
+                  <div className="flex-1 h-10 flex items-center justify-center font-medium text-sm border-x border-surface-300">
+                    {form.quantity}
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setForm({ ...form, quantity: (parseInt(form.quantity) + 1).toString() })}
+                    className="h-10 w-10 p-0 hover:bg-surface-100"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
               <div className="space-y-1">
                 <Label>Condition</Label>

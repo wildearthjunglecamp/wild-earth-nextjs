@@ -3,21 +3,23 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
-import { 
-  Calendar, 
-  Users, 
-  Check, 
-  ChevronLeft, 
-  ChevronRight, 
-  Mail, 
-  Phone, 
+import {
+  Calendar,
+  Users,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Mail,
+  Phone,
   User,
   Utensils,
   Coffee,
   Activity,
   CreditCard,
   AlertCircle,
-  CheckCircle2
+  CheckCircle2,
+  Minus,
+  Plus
 } from 'lucide-react';
 import { Button } from '@/src/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/src/components/ui/card';
@@ -211,7 +213,7 @@ export default function BookingPage() {
       }
     }
     
-    if (currentStep < 5) {
+    if (currentStep < 4) {
       setCurrentStep(currentStep + 1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -219,6 +221,10 @@ export default function BookingPage() {
 
   // Handle previous step
   const handleBack = () => {
+    if (currentStep === 1) {
+      router.push('/availibility'); // Go back to tent selection
+
+    }
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -252,9 +258,9 @@ export default function BookingPage() {
     const steps = [
       { number: 1, label: 'Booking Details' },
       { number: 2, label: 'Guest Info' },
-      { number: 3, label: 'Add-ons' },
-      { number: 4, label: 'Review' },
-      { number: 5, label: 'Payment' },
+      // { number: 3, label: 'Add-ons' },
+      { number: 3, label: 'Review' },
+      { number: 4, label: 'Payment' },
     ];
 
     return (
@@ -504,7 +510,23 @@ export default function BookingPage() {
                           </span>
                         </div>
                       </div>
-
+                    {/* breakfast included section */}
+                      <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
+                        <h3 className="font-body text-sm font-semibold text-emerald-900 mb-3 flex items-center gap-2">
+                          <CheckCircle2 className="h-4 w-4" />
+                          Included in Your Booking
+                        </h3>
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2 font-body text-sm text-emerald-800">
+                            <Coffee className="h-4 w-4" />
+                            <span>Breakfast & Evening Snacks</span>
+                          </div>
+                          <div className="flex items-center gap-2 font-body text-sm text-emerald-800">
+                            <Activity className="h-4 w-4" />
+                            <span>All Activities (Fishing, Boating, Jungle Walk, etc.)</span>
+                          </div>
+                        </div>
+                      </div>
                       {/* Selected Tents */}
                       <div>
                         <div className="flex items-center gap-2 mb-4">
@@ -652,35 +674,73 @@ export default function BookingPage() {
                             <Label htmlFor="adults" className="font-body text-xs text-secondary-600">
                               Adults (age 5+)
                             </Label>
-                            <Input
-                              id="adults"
-                              type="number"
-                              min={1}
-                              max={getCapacityLimits().adultCapacity}
-                              value={adults}
-                              onChange={(e) => {
-                                setAdults(parseInt(e.target.value) || 0);
-                                setGuestCountError(null);
-                              }}
-                              className="font-body text-body-md"
-                            />
+                            <div className="flex items-center border border-secondary-300 rounded-md">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setAdults(Math.max(1, adults - 1));
+                                  setGuestCountError(null);
+                                }}
+                                disabled={adults <= 1}
+                                className="h-10 w-10 p-0 hover:bg-secondary-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                <Minus className="h-4 w-4" />
+                              </Button>
+                              <div className="flex-1 h-10 flex items-center justify-center font-body text-body-md font-medium border-x border-secondary-300">
+                                {adults}
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setAdults(Math.min(getCapacityLimits().adultCapacity, adults + 1));
+                                  setGuestCountError(null);
+                                }}
+                                disabled={adults >= getCapacityLimits().adultCapacity}
+                                className="h-10 w-10 p-0 hover:bg-secondary-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                <Plus className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </div>
                           <div className="space-y-1">
                             <Label htmlFor="children" className="font-body text-xs text-secondary-600">
                               Children (under 5)
                             </Label>
-                            <Input
-                              id="children"
-                              type="number"
-                              min={0}
-                              max={getCapacityLimits().childCapacity}
-                              value={children}
-                              onChange={(e) => {
-                                setChildren(parseInt(e.target.value) || 0);
-                                setGuestCountError(null);
-                              }}
-                              className="font-body text-body-md"
-                            />
+                            <div className="flex items-center border border-secondary-300 rounded-md">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setChildren(Math.max(0, children - 1));
+                                  setGuestCountError(null);
+                                }}
+                                disabled={children <= 0}
+                                className="h-10 w-10 p-0 hover:bg-secondary-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                <Minus className="h-4 w-4" />
+                              </Button>
+                              <div className="flex-1 h-10 flex items-center justify-center font-body text-body-md font-medium border-x border-secondary-300">
+                                {children}
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setChildren(Math.min(getCapacityLimits().childCapacity, children + 1));
+                                  setGuestCountError(null);
+                                }}
+                                disabled={children >= getCapacityLimits().childCapacity}
+                                className="h-10 w-10 p-0 hover:bg-secondary-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                <Plus className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </div>
                         </div>
                         <p className="font-body text-xs text-secondary-500">
@@ -706,120 +766,120 @@ export default function BookingPage() {
                   </Card>
                 )}
 
-                {/* Step 3: Add-ons Selection */}
+                {/* Step 3: Add-ons Selection 
                 {currentStep === 3 && (
-                  <Card className="border-surface-200 shadow-level-1">
-                    <CardHeader>
-                      <CardTitle className="font-display text-2xl text-primary-900">
-                        Enhance Your Stay
-                      </CardTitle>
-                      <CardDescription className="font-body text-secondary-600">
-                        Select additional services to make your experience even better
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                      {/* Included Items */}
-                      <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
-                        <h3 className="font-body text-sm font-semibold text-emerald-900 mb-3 flex items-center gap-2">
-                          <CheckCircle2 className="h-4 w-4" />
-                          Included in Your Booking
-                        </h3>
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2 font-body text-sm text-emerald-800">
-                            <Coffee className="h-4 w-4" />
-                            <span>Breakfast & Evening Snacks</span>
-                          </div>
-                          <div className="flex items-center gap-2 font-body text-sm text-emerald-800">
-                            <Activity className="h-4 w-4" />
-                            <span>All Activities (Fishing, Boating, Jungle Walk, etc.)</span>
-                          </div>
-                        </div>
-                      </div>
+                  // <Card className="border-surface-200 shadow-level-1">
+                  //   <CardHeader>
+                  //     <CardTitle className="font-display text-2xl text-primary-900">
+                  //       Enhance Your Stay
+                  //     </CardTitle>
+                  //     <CardDescription className="font-body text-secondary-600">
+                  //       Select additional services to make your experience even better
+                  //     </CardDescription>
+                  //   </CardHeader>
+                  //   <CardContent className="space-y-6">
+                  //     
+                  //     <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
+                  //       <h3 className="font-body text-sm font-semibold text-emerald-900 mb-3 flex items-center gap-2">
+                  //         <CheckCircle2 className="h-4 w-4" />
+                  //         Included in Your Booking
+                  //       </h3>
+                  //       <div className="space-y-2">
+                  //         <div className="flex items-center gap-2 font-body text-sm text-emerald-800">
+                  //           <Coffee className="h-4 w-4" />
+                  //           <span>Breakfast & Evening Snacks</span>
+                  //         </div>
+                  //         <div className="flex items-center gap-2 font-body text-sm text-emerald-800">
+                  //           <Activity className="h-4 w-4" />
+                  //           <span>All Activities (Fishing, Boating, Jungle Walk, etc.)</span>
+                  //         </div>
+                  //       </div>
+                  //     </div>
 
-                      {/* Optional Add-ons */}
-                      <div>
-                        <h3 className="font-body text-base font-semibold text-primary-900 mb-4">
-                          Optional Add-ons
-                        </h3>
-                        <div className="space-y-4">
-                          {/* Lunch */}
-                          <div className="border border-surface-200 rounded-lg p-4 hover:border-primary-300 transition-colors">
-                            <div className="flex items-start gap-4">
-                              <Checkbox
-                                id="lunch"
-                                checked={addOns.lunch}
-                                onCheckedChange={(checked) => setAddOns({ ...addOns, lunch: checked as boolean })}
-                                className="mt-1"
-                              />
-                              <div className="flex-1">
-                                <Label htmlFor="lunch" className="font-body text-base font-semibold text-primary-900 cursor-pointer">
-                                  Lunch
-                                </Label>
-                                <p className="font-body text-sm text-secondary-600 mt-1">
-                                  Delicious lunch prepared with fresh, local ingredients
-                                </p>
-                                <div className="mt-2 font-body text-sm text-primary-900">
-                                  ₹{ADDON_PRICES.lunch} per person per night
-                                </div>
-                                {addOns.lunch && (
-                                  <div className="mt-2 bg-primary-50 rounded px-3 py-2 font-body text-sm text-primary-900">
-                                    Total: ₹{(ADDON_PRICES.lunch * bookingData.totalGuests * bookingData.nights).toLocaleString()} 
-                                    <span className="text-secondary-600 ml-1">
-                                      ({bookingData.totalGuests} guests × {bookingData.nights} nights)
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </div>
+                  //     
+                  //     <div>
+                  //       <h3 className="font-body text-base font-semibold text-primary-900 mb-4">
+                  //         Optional Add-ons
+                  //       </h3>
+                  //       <div className="space-y-4">
+                  //         
+                  //         <div className="border border-surface-200 rounded-lg p-4 hover:border-primary-300 transition-colors">
+                  //           <div className="flex items-start gap-4">
+                  //             <Checkbox
+                  //               id="lunch"
+                  //               checked={addOns.lunch}
+                  //               onCheckedChange={(checked) => setAddOns({ ...addOns, lunch: checked as boolean })}
+                  //               className="mt-1"
+                  //             />
+                  //             <div className="flex-1">
+                  //               <Label htmlFor="lunch" className="font-body text-base font-semibold text-primary-900 cursor-pointer">
+                  //                 Lunch
+                  //               </Label>
+                  //               <p className="font-body text-sm text-secondary-600 mt-1">
+                  //                 Delicious lunch prepared with fresh, local ingredients
+                  //               </p>
+                  //               <div className="mt-2 font-body text-sm text-primary-900">
+                  //                 ₹{ADDON_PRICES.lunch} per person per night
+                  //               </div>
+                  //               {addOns.lunch && (
+                  //                 <div className="mt-2 bg-primary-50 rounded px-3 py-2 font-body text-sm text-primary-900">
+                  //                   Total: ₹{(ADDON_PRICES.lunch * bookingData.totalGuests * bookingData.nights).toLocaleString()} 
+                  //                   <span className="text-secondary-600 ml-1">
+                  //                     ({bookingData.totalGuests} guests × {bookingData.nights} nights)
+                  //                   </span>
+                  //                 </div>
+                  //               )}
+                  //             </div>
+                  //           </div>
+                  //         </div>
 
-                          {/* Dinner */}
-                          <div className="border border-surface-200 rounded-lg p-4 hover:border-primary-300 transition-colors">
-                            <div className="flex items-start gap-4">
-                              <Checkbox
-                                id="dinner"
-                                checked={addOns.dinner}
-                                onCheckedChange={(checked) => setAddOns({ ...addOns, dinner: checked as boolean })}
-                                className="mt-1"
-                              />
-                              <div className="flex-1">
-                                <Label htmlFor="dinner" className="font-body text-base font-semibold text-primary-900 cursor-pointer">
-                                  Dinner
-                                </Label>
-                                <p className="font-body text-sm text-secondary-600 mt-1">
-                                  Enjoy a hearty dinner under the stars
-                                </p>
-                                <div className="mt-2 font-body text-sm text-primary-900">
-                                  ₹{ADDON_PRICES.dinner} per person per night
-                                </div>
-                                {addOns.dinner && (
-                                  <div className="mt-2 bg-primary-50 rounded px-3 py-2 font-body text-sm text-primary-900">
-                                    Total: ₹{(ADDON_PRICES.dinner * bookingData.totalGuests * bookingData.nights).toLocaleString()}
-                                    <span className="text-secondary-600 ml-1">
-                                      ({bookingData.totalGuests} guests × {bookingData.nights} nights)
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+                  //         
+                  //         <div className="border border-surface-200 rounded-lg p-4 hover:border-primary-300 transition-colors">
+                  //           <div className="flex items-start gap-4">
+                  //             <Checkbox
+                  //               id="dinner"
+                  //               checked={addOns.dinner}
+                  //               onCheckedChange={(checked) => setAddOns({ ...addOns, dinner: checked as boolean })}
+                  //               className="mt-1"
+                  //             />
+                  //             <div className="flex-1">
+                  //               <Label htmlFor="dinner" className="font-body text-base font-semibold text-primary-900 cursor-pointer">
+                  //                 Dinner
+                  //               </Label>
+                  //               <p className="font-body text-sm text-secondary-600 mt-1">
+                  //                 Enjoy a hearty dinner under the stars
+                  //               </p>
+                  //               <div className="mt-2 font-body text-sm text-primary-900">
+                  //                 ₹{ADDON_PRICES.dinner} per person per night
+                  //               </div>
+                  //               {addOns.dinner && (
+                  //                 <div className="mt-2 bg-primary-50 rounded px-3 py-2 font-body text-sm text-primary-900">
+                  //                   Total: ₹{(ADDON_PRICES.dinner * bookingData.totalGuests * bookingData.nights).toLocaleString()}
+                  //                   <span className="text-secondary-600 ml-1">
+                  //                     ({bookingData.totalGuests} guests × {bookingData.nights} nights)
+                  //                   </span>
+                  //                 </div>
+                  //               )}
+                  //             </div>
+                  //           </div>
+                  //         </div>
+                  //       </div>
+                  //     </div>
 
-                      {!addOns.lunch && !addOns.dinner && (
-                        <Alert>
-                          <Utensils className="h-4 w-4" />
-                          <AlertDescription className="font-body text-sm">
-                            You can skip this step if you don't need additional meals. Breakfast and snacks are already included!
-                          </AlertDescription>
-                        </Alert>
-                      )}
-                    </CardContent>
-                  </Card>
-                )}
+                  //     {!addOns.lunch && !addOns.dinner && (
+                  //       <Alert>
+                  //         <Utensils className="h-4 w-4" />
+                  //         <AlertDescription className="font-body text-sm">
+                  //           You can skip this step if you don't need additional meals. Breakfast and snacks are already included!
+                  //         </AlertDescription>
+                  //       </Alert>
+                  //     )}
+                  //   </CardContent>
+                  // </Card>
+                )}*/}
 
                 {/* Step 4: Review Booking */}
-                {currentStep === 4 && (
+                {currentStep === 3 && (
                   <Card className="border-surface-200 shadow-level-1">
                     <CardHeader>
                       <CardTitle className="font-display text-2xl text-primary-900">
@@ -958,7 +1018,7 @@ export default function BookingPage() {
                 )}
 
                 {/* Step 5: Payment */}
-                {currentStep === 5 && (
+                {currentStep === 4 && (
                   <Card className="border-surface-200 shadow-level-1">
                     <CardHeader>
                       <CardTitle className="font-display text-2xl text-primary-900">
@@ -1019,7 +1079,7 @@ export default function BookingPage() {
                 <div className="flex justify-between items-center mt-8">
                   <Button
                     onClick={handleBack}
-                    disabled={currentStep === 1}
+                    // disabled={currentStep === 1}
                     variant="outline"
                     className="border-primary-600 text-primary-600 hover:bg-primary-50"
                   >
@@ -1027,7 +1087,7 @@ export default function BookingPage() {
                     Back
                   </Button>
 
-                  {currentStep < 5 && (
+                  {currentStep < 4 && (
                     <Button
                       onClick={handleNext}
                       className="bg-primary-600 hover:bg-primary-700 text-white"

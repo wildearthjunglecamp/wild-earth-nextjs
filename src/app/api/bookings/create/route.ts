@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createBookingWithPayment } from '../../../../services/booking.service';
 import { createBookingSchema } from '../../../../validations/booking.schema';
+import { sendBookingConfirmationEmail } from '@/src/lib/email/sendBookingEmails';
+import { resend } from '@/src/lib/email/resend';
+import { EmailTemplate } from '@/src/components/email/confirmationEmailTemplate';
 
 /**
  * POST /api/bookings/create
@@ -70,7 +73,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Return success response
+    // Return success response and confirmation email
+try {
+
+  if(result.data){
+    const { data, error } = await resend.emails.send({
+      from: 'Wildearth Jungle Camp <onboarding@resend.dev>',
+      to: [bookingInput.customerEmail],
+      subject: 'Your Wild Earth Jungle Camp Booking is Confirmed 🌿',
+      react: EmailTemplate(
+        {
+          to: bookingInput.customerEmail, 
+          name: bookingInput.customerName, 
+          bookingId: result.data.bookingNumber, 
+          checkIn: bookingInput.checkIn, 
+          checkOut: bookingInput.checkOut, 
+          tent: result.data.tentTypes.map(t => `${t.tentTypeName} (x${t.quantity})`).join(', '), 
+          amount: bookingInput.totalAmount
+        })
+    })
+  }
+} catch (error) {
+  // Log but don't fail the booking if email fails
+  console.error('Failed to send confirmation email:', error);
+}
     return NextResponse.json(
       {
         success: true,
