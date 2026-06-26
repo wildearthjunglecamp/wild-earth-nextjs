@@ -29,9 +29,9 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 const STATUS_BADGE: Record<string, string> = {
-  confirmed: 'bg-primary text-on-primary',
+  confirmed: 'bg-primary !text-white',
   pending: 'bg-secondary-container text-on-secondary-container',
-  'checked-in': 'bg-tertiary-container text-on-tertiary-container',
+  'checked-in': 'bg-tertiary-container !text-white',
   'checked-out': 'bg-surface-container-high text-on-surface',
   cancelled: 'bg-error-container text-on-error-container',
   'no-show': 'bg-error-container text-on-error-container',
@@ -154,7 +154,7 @@ export default async function DashboardPage() {
                     <span className="text-body-md font-sans font-semibold text-on-surface">
                       ₹{b.amount.toLocaleString('en-IN')}
                     </span>
-                    <Badge className={`${STATUS_BADGE[b.status]} text-label-sm font-sans`}>
+                    <Badge className={`${STATUS_BADGE[b.status]} te text-label-sm font-sans`}>
                       {STATUS_LABEL[b.status]}
                     </Badge>
                   </div>
