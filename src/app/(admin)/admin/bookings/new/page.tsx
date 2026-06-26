@@ -10,7 +10,7 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ChevronLeft, Search, Loader2, Users } from 'lucide-react';
+import { ChevronLeft, Search, Loader2, Users, Minus, Plus } from 'lucide-react';
 import { Button } from '@/src/components/ui/button';
 import { Input } from '@/src/components/ui/input';
 import { Label } from '@/src/components/ui/label';
@@ -282,14 +282,38 @@ export default function NewBookingPage() {
                         {t.availableCount} available
                       </p>
                     </div>
-                    <Input
-                      type="number"
-                      min={0}
-                      max={t.availableCount}
-                      value={quantities[t.tentTypeSlug] ?? 0}
-                      onChange={(e) => setQty(t.tentTypeSlug, parseInt(e.target.value, 10), t.availableCount)}
-                      className="w-20"
-                    />
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => setQty(t.tentTypeSlug, (quantities[t.tentTypeSlug] ?? 0) - 1, t.availableCount)}
+                        disabled={(quantities[t.tentTypeSlug] ?? 0) <= 0}
+                      >
+                        <Minus className="h-4 w-4" />
+                      </Button>
+                      
+                      <Input
+                        type="number"
+                        min={0}
+                        max={t.availableCount}
+                        value={quantities[t.tentTypeSlug] ?? 0}
+                        onChange={(e) => setQty(t.tentTypeSlug, parseInt(e.target.value, 10), t.availableCount)}
+                        className="w-16 text-center"
+                      />
+                      
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => setQty(t.tentTypeSlug, (quantities[t.tentTypeSlug] ?? 0) + 1, t.availableCount)}
+                        disabled={(quantities[t.tentTypeSlug] ?? 0) >= t.availableCount}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>

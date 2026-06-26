@@ -12,16 +12,16 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
+} from '../../components/ui/card';
+import { Badge } from '../../components/ui/badge';
+import { Separator } from '../../components/ui/separator';
 import { Loader2, Calendar, TrendingUp, Info } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@/components/ui/tooltip';
+} from '../../components/ui/tooltip';
 
 interface DailyPrice {
   date: string;
@@ -38,6 +38,7 @@ interface TentItemPricing {
   totalPrice: number;
   hasCustomPricing: boolean;
   dailyPrices?: DailyPrice[];
+  isByot?: boolean;
 }
 
 interface PricingBreakdownProps {
@@ -178,12 +179,19 @@ export function PricingBreakdown({
                   )}
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  {item.quantity} tent{item.quantity !== 1 ? 's' : ''} × {nights}{' '}
-                  night{nights !== 1 ? 's' : ''}
+                  {item.isByot
+                    ? `${item.quantity} guest${item.quantity !== 1 ? 's' : ''} × ${nights} night${nights !== 1 ? 's' : ''}`
+                    : `${item.quantity} tent${item.quantity !== 1 ? 's' : ''} × ${nights} night${nights !== 1 ? 's' : ''}`
+                  }
                 </p>
-                {!item.hasCustomPricing && (
+                {!item.hasCustomPricing && !item.isByot && (
                   <p className="text-xs text-muted-foreground">
                     Base price: ₹{item.basePrice.toLocaleString()} per night
+                  </p>
+                )}
+                {item.isByot && (
+                  <p className="text-xs text-muted-foreground">
+                    Per guest pricing: ₹{item.pricePerNight.toLocaleString()} per guest per night
                   </p>
                 )}
               </div>
@@ -192,7 +200,10 @@ export function PricingBreakdown({
                   ₹{item.totalPrice.toLocaleString()}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  ₹{item.pricePerNight.toLocaleString()}/night avg
+                  {item.isByot
+                    ? `₹${item.pricePerNight.toLocaleString()}/guest/night`
+                    : `₹${item.pricePerNight.toLocaleString()}/night avg`
+                  }
                 </p>
               </div>
             </div>

@@ -39,6 +39,8 @@ interface SelectedTent {
   effectivePrice: number;
   stayTotal: number;
   quantity: number;
+  isByot?: boolean;
+  perGuestPrice?: number;
 }
 
 // Children under 5 don't count against a tent's (adult) capacity; each tent
@@ -347,10 +349,13 @@ export default function BookingPage() {
                     {tent.tentTypeName}
                   </div>
                   <div className="font-body text-xs text-secondary-600">
-                    {tent.quantity} × ₹{tent.effectivePrice.toLocaleString()} × {bookingData.nights} nights
+                    {tent.isByot
+                      ? `${tent.quantity} guests × ₹${tent.effectivePrice.toLocaleString()} × ${bookingData.nights} nights`
+                      : `${tent.quantity} × ₹${tent.effectivePrice.toLocaleString()} × ${bookingData.nights} nights`
+                    }
                   </div>
                   <div className="font-body text-xs text-secondary-500">
-                    {tent.capacity * tent.quantity} guests
+                    {tent.isByot ? tent.quantity : (tent.capacity * tent.quantity)} guests
                   </div>
                   <div className="font-body text-sm font-semibold text-primary-900 mt-1">
                     ₹{(tent.stayTotal * tent.quantity).toLocaleString()}

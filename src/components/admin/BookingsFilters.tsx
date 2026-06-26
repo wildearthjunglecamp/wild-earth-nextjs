@@ -62,7 +62,7 @@ export function BookingsFilters({ tentTypes, current }: BookingsFiltersProps) {
     <div className="bg-surface-container-lowest shadow-level-1 border border-outline-variant rounded-lg p-6">
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {/* Search */}
-        <div className="md:col-span-2">
+        <div className="md:col-span-3">
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -81,6 +81,14 @@ export function BookingsFilters({ tentTypes, current }: BookingsFiltersProps) {
             </div>
           </form>
         </div>
+              <Button
+          variant="outline"
+          size="sm"
+          className="font-display rounded-md"
+          onClick={() => apply({})}
+        >
+          Search
+        </Button>
 
         {/* Status filter */}
         <div>
@@ -131,15 +139,7 @@ export function BookingsFilters({ tentTypes, current }: BookingsFiltersProps) {
       </div>
 
       <div className="flex items-center gap-3 mt-4 pt-4 border-t border-outline-variant">
-        <Button
-          variant="outline"
-          size="sm"
-          className="font-display rounded-md"
-          onClick={() => apply({})}
-        >
-          <Search className="h-4 w-4 mr-2" />
-          Search
-        </Button>
+        
         <Button
           variant="ghost"
           size="sm"

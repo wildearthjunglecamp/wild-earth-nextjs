@@ -28,6 +28,9 @@ interface TentType {
   totalCount: number;
   availableTentIds: string[];
   availableTentNumbers: string[];
+  isByot?: boolean;        // True if this is "Bring Your Own Tent"
+  perGuestPrice?: number;  // Price per guest per night for BYOT
+  maxGuestsPerNight?: number; // Maximum guests allowed per night for BYOT
 }
 
 interface AvailabilityResponse {
@@ -51,6 +54,8 @@ interface SelectedTent {
   effectivePrice: number;
   stayTotal: number;
   quantity: number;
+  isByot?: boolean;
+  perGuestPrice?: number;
 }
 
 export default function AvailabilityPage() {
@@ -139,7 +144,7 @@ export default function AvailabilityPage() {
       // Deselect
       newSelections.delete(tent.tentTypeId);
     } else {
-      // Select (default quantity: 1)
+      // Select (default quantity: 1 for regular tents, 1 guest for BYOT)
       newSelections.set(tent.tentTypeId, {
         tentTypeId: tent.tentTypeId,
         tentTypeSlug: tent.tentTypeSlug,
@@ -149,6 +154,8 @@ export default function AvailabilityPage() {
         effectivePrice: tent.effectivePrice,
         stayTotal: tent.stayTotal,
         quantity: 1,
+        isByot: tent.isByot,
+        perGuestPrice: tent.perGuestPrice,
       });
     }
     
@@ -173,8 +180,15 @@ export default function AvailabilityPage() {
     let totalPrice = 0;
 
     selectedTents.forEach((tent) => {
-      totalGuests += tent.capacity * tent.quantity;
-      totalPrice += tent.stayTotal * tent.quantity;
+      if (tent.isByot) {
+        // For BYOT, quantity represents guest count
+        totalGuests += tent.quantity;
+        totalPrice += tent.stayTotal * tent.quantity;
+      } else {
+        // For regular tents, multiply capacity by quantity
+        totalGuests += tent.capacity * tent.quantity;
+        totalPrice += tent.stayTotal * tent.quantity;
+      }
     });
 
     return { totalGuests, totalPrice };
@@ -183,15 +197,18 @@ export default function AvailabilityPage() {
   const { totalGuests, totalPrice } = calculateTotals();
 
   // Get tent status
-  const getTentStatus = (tent: TentType): 'available' | 'limited' | 'soldout' => {
+  const getTentStatus = (tent: TentType): 'available' | 'limited' | 'soldout' | 'byot' => {
+    if (tent.isByot) return 'byot';
     if (tent.availableCount === 0) return 'soldout';
     if (tent.availableCount <= 2) return 'limited';
     return 'available';
   };
 
   // Get status badge
-  const getStatusBadge = (status: 'available' | 'limited' | 'soldout') => {
+  const getStatusBadge = (status: 'available' | 'limited' | 'soldout' | 'byot') => {
     switch (status) {
+      case 'byot':
+        return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">Always Available</Badge>;
       case 'available':
         return <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">Available</Badge>;
       case 'limited':
@@ -370,7 +387,10 @@ export default function AvailabilityPage() {
                                     <div className="flex items-center gap-2 text-secondary-600">
                                       <Users className="h-4 w-4" />
                                       <span className="font-body text-sm">
-                                        Up to {tent.capacity} guests and 2 children below the age of 5
+                                        {tent.isByot
+                                          ? 'Bring your own tent - charged per guest'
+                                          : `Up to ${tent.capacity} guests and 2 children below the age of 5`
+                                        }
                                       </span>
                                     </div>
                                   </div>
@@ -408,7 +428,14 @@ export default function AvailabilityPage() {
 
                                 {/* Availability Count */}
                                 <div className="flex items-center gap-2 text-sm">
-                                  {!isSoldOut ? (
+                                  {tent.isByot ? (
+                                    <>
+                                      <Check className="h-4 w-4 text-blue-600" />
+                                      <span className="font-body text-secondary-700">
+                                        Always available (max {tent.maxGuestsPerNight} guests per night)
+                                      </span>
+                                    </>
+                                  ) : !isSoldOut ? (
                                     <>
                                       <Check className="h-4 w-4 text-emerald-600" />
                                       <span className="font-body text-secondary-700">
@@ -433,13 +460,16 @@ export default function AvailabilityPage() {
                                     ₹{tent.effectivePrice.toLocaleString()}
                                   </div>
                                   <div className="font-body text-sm text-secondary-600">
-                                    per night
-                                    {tent.effectivePrice !== tent.basePrice && (
+                                    {tent.isByot ? 'per guest per night' : 'per night'}
+                                    {!tent.isByot && tent.effectivePrice !== tent.basePrice && (
                                       <span className="ml-1 text-xs text-amber-600">(custom)</span>
                                     )}
                                   </div>
                                   <div className="font-body text-xs text-secondary-500 mt-1">
-                                    ₹{tent.stayTotal.toLocaleString()} total
+                                    {tent.isByot
+                                      ? `₹${tent.stayTotal.toLocaleString()} per guest for stay`
+                                      : `₹${tent.stayTotal.toLocaleString()} total`
+                                    }
                                   </div>
                                 </div>
 
@@ -447,7 +477,9 @@ export default function AvailabilityPage() {
                                   <div className="w-full space-y-2">
                                     {isSelected && selectedTent && (
                                       <div className="flex items-center gap-3 mb-2">
-                                        <Label className="font-body text-xs text-secondary-700">Qty:</Label>
+                                        <Label className="font-body text-xs text-secondary-700">
+                                          {tent.isByot ? 'Guests:' : 'Qty:'}
+                                        </Label>
                                         <div className="flex items-center border border-secondary-300 rounded-md">
                                           <Button
                                             type="button"
@@ -466,8 +498,8 @@ export default function AvailabilityPage() {
                                             type="button"
                                             variant="ghost"
                                             size="sm"
-                                            onClick={() => updateTentQuantity(tent.tentTypeId, Math.min(tent.availableCount, selectedTent.quantity + 1))}
-                                            disabled={selectedTent.quantity >= tent.availableCount}
+                                            onClick={() => updateTentQuantity(tent.tentTypeId, Math.min(tent.isByot ? (tent.maxGuestsPerNight || 30) : tent.availableCount, selectedTent.quantity + 1))}
+                                            disabled={tent.isByot ? selectedTent.quantity >= (tent.maxGuestsPerNight || 30) : selectedTent.quantity >= tent.availableCount}
                                             className="h-8 w-8 p-0 hover:bg-secondary-100 disabled:opacity-50 disabled:cursor-not-allowed"
                                           >
                                             <Plus className="h-4 w-4" />
@@ -489,7 +521,7 @@ export default function AvailabilityPage() {
                                           Selected
                                         </>
                                       ) : (
-                                        'Select Tent'
+                                        tent.isByot ? 'Select BYOT' : 'Select Tent'
                                       )}
                                     </Button>
                                   </div>

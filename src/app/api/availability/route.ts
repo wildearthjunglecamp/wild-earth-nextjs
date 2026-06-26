@@ -80,6 +80,9 @@ export async function POST(request: NextRequest) {
       totalCount: parseInt(item.total_count),
       availableTentIds: item.available_tent_ids || [],
       availableTentNumbers: item.available_tent_numbers || [],
+      isByot: item.is_byot === true,
+      perGuestPrice: item.per_guest_price ? parseFloat(item.per_guest_price) : undefined,
+      maxGuestsPerNight: item.max_guests_per_night ? parseInt(item.max_guests_per_night) : undefined,
     }));
 
     // const transformedData = service.getAvailableTents({
@@ -97,6 +100,18 @@ export async function POST(request: NextRequest) {
     const enrichedData = await Promise.all(
       transformedData.map(async (tent: any) => {
         try {
+          // For BYOT, pricing is per guest, not per tent
+          if (tent.isByot && tent.perGuestPrice) {
+            const pricePerGuestPerNight = tent.perGuestPrice;
+            const stayTotal = pricePerGuestPerNight * nights;
+            return {
+              ...tent,
+              effectivePrice: pricePerGuestPerNight,
+              stayTotal,
+            };
+          }
+          
+          // Regular tent pricing
           const stayTotal = await pricingService.calculateTotalForRange(
             tent.tentTypeId,
             validatedData.checkInDate,

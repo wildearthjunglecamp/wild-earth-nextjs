@@ -5,10 +5,11 @@ import { z } from 'zod';
  */
 export const tentItemSchema = z.object({
   tentTypeSlug: z.enum([
-    'twin_sharing_small',
-    'twin_sharing_semi_big',
-    'three_sharing_jungle',
-    'four_sharing_jungle',
+    'twin_sharing_small_tent',
+    'twin_sharing_semi_big_tent',
+    'three_sharing_jungle_tent',
+    'four_sharing_jungle_tent',
+    'bring_your_own_tent',
   ]),
   quantity: z.number().int().min(1, 'Quantity must be at least 1').max(10, 'Maximum 10 tents per type'),
   pricePerNight: z.number().positive('Price per night must be positive'),
@@ -245,36 +246,50 @@ export function validateTentCapacity(
 ): { valid: boolean; message?: string } {
   // Define capacity for each tent type
   const capacities: Record<string, number> = {
-    twin_sharing_small: 2,
-    twin_sharing_semi_big: 2,
-    three_sharing_jungle: 3,
-    four_sharing_jungle: 4,
+    twin_sharing_small_tent: 2,
+    twin_sharing_semi_big_tent: 2,
+    three_sharing_jungle_tent: 3,
+    four_sharing_jungle_tent: 4,
+    bring_your_own_tent: 0, // BYOT has no capacity limit per tent
   };
 
-  const adultCapacity = tentItems.reduce((sum, item) => {
+  // Separate BYOT from regular tents
+  const regularTents = tentItems.filter(item => item.tentTypeSlug !== 'bring_your_own_tent');
+  const byotItems = tentItems.filter(item => item.tentTypeSlug === 'bring_your_own_tent');
+
+  // For regular tents, calculate capacity
+  const adultCapacity = regularTents.reduce((sum, item) => {
     const capacity = capacities[item.tentTypeSlug] || 0;
     return sum + capacity * item.quantity;
   }, 0);
 
-  const totalTents = tentItems.reduce((sum, item) => sum + item.quantity, 0);
-  const childCapacity = totalTents * CHILDREN_PER_TENT;
+  const totalRegularTents = regularTents.reduce((sum, item) => sum + item.quantity, 0);
+  const childCapacity = totalRegularTents * CHILDREN_PER_TENT;
 
   if (adults < 1) {
     return { valid: false, message: 'At least one adult is required' };
   }
 
-  if (adults > adultCapacity) {
-    return {
-      valid: false,
-      message: `Adults (${adults}) exceed tent capacity (${adultCapacity})`,
-    };
+  // If only BYOT, no capacity validation needed (guests bring their own tents)
+  if (regularTents.length === 0 && byotItems.length > 0) {
+    return { valid: true };
   }
 
-  if (children > childCapacity) {
-    return {
-      valid: false,
-      message: `Children under 5 (${children}) exceed the limit of ${childCapacity} (${CHILDREN_PER_TENT} per tent)`,
-    };
+  // If regular tents exist, validate capacity
+  if (regularTents.length > 0) {
+    if (adults > adultCapacity) {
+      return {
+        valid: false,
+        message: `Adults (${adults}) exceed tent capacity (${adultCapacity})`,
+      };
+    }
+
+    if (children > childCapacity) {
+      return {
+        valid: false,
+        message: `Children under 5 (${children}) exceed the limit of ${childCapacity} (${CHILDREN_PER_TENT} per tent)`,
+      };
+    }
   }
 
   return { valid: true };

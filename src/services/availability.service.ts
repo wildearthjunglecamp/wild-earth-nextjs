@@ -40,6 +40,9 @@ export interface AvailableTentType {
   totalCount: number;
   availableTentIds: string[];
   availableTentNumbers: string[];
+  isByot?: boolean; // True if this is "Bring Your Own Tent"
+  perGuestPrice?: number; // Price per guest per night for BYOT
+  maxGuestsPerNight?: number; // Maximum guests allowed per night for BYOT
 }
 
 export interface AvailabilityCheckParams {
@@ -126,18 +129,32 @@ export class AvailabilityService {
     const enhancedData = await Promise.all(
       (data || []).map(async (type: any) => {
         const basePrice = parseFloat(type.base_price);
+        const isByot = type.is_byot === true;
         
-        // Get date-specific pricing for this tent type
-        const totalPrice = await pricingRepository.calculateTotalForRange(
-          type.tent_type_id,
-          this.formatDate(checkInDate),
-          this.formatDate(checkOutDate),
-          1
-        );
+        // For BYOT, pricing is per guest, not per tent
+        let totalPrice: number;
+        let pricePerNight: number;
+        let hasCustomPricing = false;
 
-        const nights = this.calculateNights(checkInDate, checkOutDate);
-        const pricePerNight = totalPrice ? totalPrice / nights : basePrice;
-        const hasCustomPricing = totalPrice !== null && totalPrice !== (basePrice * nights);
+        if (isByot) {
+          // BYOT pricing is per guest per night
+          pricePerNight = type.per_guest_price ? parseFloat(type.per_guest_price) : basePrice;
+          const nights = this.calculateNights(checkInDate, checkOutDate);
+          totalPrice = pricePerNight * nights; // This is per guest
+        } else {
+          // Regular tent pricing with date-specific pricing
+          const calculatedTotal = await pricingRepository.calculateTotalForRange(
+            type.tent_type_id,
+            this.formatDate(checkInDate),
+            this.formatDate(checkOutDate),
+            1
+          );
+
+          const nights = this.calculateNights(checkInDate, checkOutDate);
+          pricePerNight = calculatedTotal ? calculatedTotal / nights : basePrice;
+          totalPrice = calculatedTotal || (basePrice * nights);
+          hasCustomPricing = calculatedTotal !== null && calculatedTotal !== (basePrice * nights);
+        }
 
         return {
           tentTypeId: type.tent_type_id,
@@ -145,7 +162,7 @@ export class AvailabilityService {
           capacity: type.capacity,
           basePrice,
           pricePerNight,
-          totalPrice: totalPrice || (basePrice * nights),
+          totalPrice,
           hasCustomPricing,
           description: type.description,
           amenities: type.amenities || [],
@@ -154,6 +171,9 @@ export class AvailabilityService {
           totalCount: parseInt(type.total_count),
           availableTentIds: type.available_tent_ids || [],
           availableTentNumbers: type.available_tent_numbers || [],
+          isByot,
+          perGuestPrice: type.per_guest_price ? parseFloat(type.per_guest_price) : undefined,
+          maxGuestsPerNight: type.max_guests_per_night ? parseInt(type.max_guests_per_night) : undefined,
         };
       })
     );

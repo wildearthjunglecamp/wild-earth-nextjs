@@ -78,34 +78,47 @@ export async function calculateTotalAmount(
   tentItems: TentItem[],
   checkIn: string,
   checkOut: string,
-  addOns?: Array<{ quantity: number; price: number }>
+  addOns?: Array<{ quantity: number; price: number }>,
+  adults?: number,
+  children?: number
 ): Promise<number> {
   // Calculate tent items total with date-specific pricing
   let tentTotal = 0;
   
   for (const item of tentItems) {
-    // Get tent type ID from slug (you'll need to query this)
+    // Get tent type details including BYOT flag
     const supabase = await createClient();
     const { data: tentType } = await supabase
       .from('tent_types')
-      .select('id')
+      .select('id, is_byot, per_guest_price')
       .eq('slug', item.tentTypeSlug)
       .single();
     
     if (tentType) {
-      const itemTotal = await pricingRepository.calculateTotalForRange(
-        tentType.id,
-        checkIn,
-        checkOut,
-        item.quantity
-      );
-      
-      if (itemTotal !== null) {
-        tentTotal += itemTotal;
-      } else {
-        // Fallback to base price calculation
+      // Check if this is a BYOT tent type
+      if (tentType.is_byot && tentType.per_guest_price) {
+        // BYOT pricing: (adults + children) × per_guest_price × nights
+        // Note: Children under 5 are not charged, but this is handled in validation
         const nights = calculateNights(checkIn, checkOut);
-        tentTotal += item.pricePerNight * item.quantity * nights;
+        const totalGuests = (adults || 0) + (children || 0);
+        // For BYOT, quantity represents number of guest groups, but pricing is per guest
+        tentTotal += tentType.per_guest_price * totalGuests * nights;
+      } else {
+        // Regular tent pricing with date-specific pricing
+        const itemTotal = await pricingRepository.calculateTotalForRange(
+          tentType.id,
+          checkIn,
+          checkOut,
+          item.quantity
+        );
+        
+        if (itemTotal !== null) {
+          tentTotal += itemTotal;
+        } else {
+          // Fallback to base price calculation
+          const nights = calculateNights(checkIn, checkOut);
+          tentTotal += item.pricePerNight * item.quantity * nights;
+        }
       }
     }
   }
@@ -124,13 +137,16 @@ export async function calculateTotalAmount(
 export async function getBookingPricingBreakdown(
   tentItems: TentItem[],
   checkIn: string,
-  checkOut: string
+  checkOut: string,
+  adults?: number,
+  children?: number
 ): Promise<{
   tentItems: Array<{
     tentTypeSlug: string;
     quantity: number;
     dailyPrices: Array<{ date: string; price: number; isCustomPrice: boolean }>;
     subtotal: number;
+    isByot?: boolean;
   }>;
   totalTentCost: number;
   nights: number;
@@ -141,29 +157,61 @@ export async function getBookingPricingBreakdown(
   let totalTentCost = 0;
 
   for (const item of tentItems) {
-    // Get tent type ID from slug
+    // Get tent type details including BYOT flag
     const { data: tentType } = await supabase
       .from('tent_types')
-      .select('id')
+      .select('id, is_byot, per_guest_price')
       .eq('slug', item.tentTypeSlug)
       .single();
 
     if (tentType) {
-      const dailyPrices = await pricingRepository.getPricesForRange(
-        tentType.id,
-        checkIn,
-        checkOut
-      );
+      if (tentType.is_byot && tentType.per_guest_price) {
+        // BYOT pricing: per guest per night
+        const totalGuests = (adults || 0) + (children || 0);
+        const pricePerNight = tentType.per_guest_price;
+        
+        // Create daily prices for BYOT (same price each night)
+        const dailyPrices = [];
+        const checkInDate = new Date(checkIn);
+        for (let i = 0; i < nights; i++) {
+          const currentDate = new Date(checkInDate);
+          currentDate.setDate(currentDate.getDate() + i);
+          dailyPrices.push({
+            date: currentDate.toISOString().split('T')[0],
+            price: pricePerNight * totalGuests,
+            isCustomPrice: false,
+          });
+        }
 
-      const subtotal = dailyPrices.reduce((sum: number, dp: any) => sum + dp.price, 0) * item.quantity;
-      totalTentCost += subtotal;
+        const subtotal = pricePerNight * totalGuests * nights;
+        totalTentCost += subtotal;
 
-      breakdown.push({
-        tentTypeSlug: item.tentTypeSlug,
-        quantity: item.quantity,
-        dailyPrices,
-        subtotal,
-      });
+        breakdown.push({
+          tentTypeSlug: item.tentTypeSlug,
+          quantity: totalGuests, // For BYOT, quantity represents guests
+          dailyPrices,
+          subtotal,
+          isByot: true,
+        });
+      } else {
+        // Regular tent pricing
+        const dailyPrices = await pricingRepository.getPricesForRange(
+          tentType.id,
+          checkIn,
+          checkOut
+        );
+
+        const subtotal = dailyPrices.reduce((sum: number, dp: any) => sum + dp.price, 0) * item.quantity;
+        totalTentCost += subtotal;
+
+        breakdown.push({
+          tentTypeSlug: item.tentTypeSlug,
+          quantity: item.quantity,
+          dailyPrices,
+          subtotal,
+          isByot: false,
+        });
+      }
     }
   }
 
