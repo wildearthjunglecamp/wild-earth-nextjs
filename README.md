@@ -1,7 +1,7 @@
 # Wild Earth Jungle Camp - Booking Management System
 
 A modern, full-stack campsite booking management system built with Next.js 15, TypeScript, and Supabase.
-
+ 
 ## 🌟 Features
 
 ### Public Features
