@@ -196,4 +196,11 @@ export function formatAmount(amount: number, currency: string = 'INR'): string {
   }).format(amount);
 }
 
-// Made with Bob
+export function verifyWebhookSignature(body: string, signature: string): boolean {
+  const secret = process.env.RAZORPAY_WEBHOOK_SECRET!;
+  const expectedSignature = crypto
+    .createHmac('sha256', secret)
+    .update(body)
+    .digest('hex');
+  return expectedSignature === signature;
+}
