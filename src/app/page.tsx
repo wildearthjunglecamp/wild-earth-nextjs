@@ -106,7 +106,7 @@ export default function Home() {
           <p className="text-xl md:text-2xl mb-8 max-w-2xl mx-auto">
             Experience luxury in the heart of nature
           </p>
-          <Link href={`https://wa.me/+919845866505?text=${encodeURIComponent('Hi I am interested in your stay.')}`} >
+          <Link href={`https://wa.me/+917204520500?text=${encodeURIComponent('Hi I am interested in your stay.')}`} >
             <Button size="lg" className="bg-primary hover:bg-primary-dark text-white">
               Book Your Stay
             </Button>
