@@ -26,7 +26,7 @@ export default function RootLayout({
         <Navbar />
         <main>{children}<Analytics /></main>
         <SocialFloatingButtons 
-        whatsappNumber="+919845866505" // Replace with your actual WhatsApp number
+        whatsappNumber="+917204520500" // Replace with your actual WhatsApp number
         instagramUsername="wildearthjunglecamp" // Replace with your Instagram username
         whatsappMessage="Hi I'm interested in your stay." // Customize your default message
       />
