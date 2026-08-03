@@ -27,7 +27,7 @@ export function Navbar() {
             <Link href="/" className="text-text hover:text-primary transition-colors">
               Home
             </Link>
-            <Link href={`https://wa.me/+919845866505?text=${encodeURIComponent('Hi I am interested in your stay.')}`} className="text-text hover:text-primary transition-colors">
+            <Link href={`https://wa.me/+917204520500?text=${encodeURIComponent('Hi I am interested in your stay.')}`} className="text-text hover:text-primary transition-colors">
               Book Now
             </Link>
             <Link href="/gallery" className="text-text hover:text-primary transition-colors">
