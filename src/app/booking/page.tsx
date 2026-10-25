@@ -33,7 +33,7 @@ export default function Booking() {
       `;
       const encodedMessage = encodeURIComponent(message);
   
-      const whatsappUrl = `https://wa.me/+919845866505?text=${encodedMessage}`;
+      const whatsappUrl = `https://wa.me/+917204520500?text=${encodedMessage}`;
         setFormData({
           name: '',
           email: '',
